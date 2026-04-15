@@ -1,12 +1,73 @@
 {
   "meta": {
     "id": "visionium-v0",
-    "title": "Visionium 概念ネット (placeholder)",
+    "title": "Visionium 概念ネット",
     "version": "0.1",
     "source": "hand-written",
-    "author": "osakenpiro"
+    "author": "osakenpiro",
+    "description": "思想・プロダクト・論文・手法の関係図。VR v0.1 Level-1 viewer のセルフ実演デモ。"
   },
-  "nodes": [],
-  "relations": [],
-  "axes": []
+  "nodes": [
+    { "id": "boolean-float", "name": "Boolean→Float", "icon": "⚖️", "attrs": { "category": "philosophy", "color": "#8338ec", "radius": 30, "desc": "二値判断を連続値0.0〜1.0に再定義する思想の核。" }},
+    { "id": "meguru", "name": "MEGURU", "icon": "🌊", "attrs": { "category": "philosophy", "color": "#8338ec", "radius": 28, "desc": "デジタル生態系ビジョン。大地=blockchain、空=AI、海=データコモンズ。" }},
+    { "id": "visionium", "name": "Visionium", "icon": "🪐", "attrs": { "category": "philosophy", "color": "#8338ec", "radius": 32, "desc": "osakenpiro ブランドの思想資本。元素記号接尾辞-ium、思想を宇宙の基本元素とする。" }},
+    { "id": "fuyoudo", "name": "腐葉土設計", "icon": "🍂", "attrs": { "category": "philosophy", "color": "#8338ec", "radius": 24, "desc": "蓄積された文脈は劣化させず栄養層として保持する。時間減衰は不要。" }},
+
+    { "id": "wakkazukan", "name": "わっかずかん", "icon": "🪐", "attrs": { "category": "product", "color": "#06d6a0", "radius": 26, "desc": "分類ビューア。VR v0.1 Level-1。βオープン中。" }},
+    { "id": "banet-map", "name": "バネットマップ", "icon": "🌀", "attrs": { "category": "product", "color": "#06d6a0", "radius": 26, "desc": "関係ビューア。力学シミュレーションで関係を見せる。本アプリ。" }},
+    { "id": "satori", "name": "SATORI", "icon": "🔮", "attrs": { "category": "product", "color": "#06d6a0", "radius": 22, "desc": "4賢者+モッポイによる VTuber プロジェクト。" }},
+    { "id": "materials", "name": "人類の素材図鑑", "icon": "🧱", "attrs": { "category": "product", "color": "#06d6a0", "radius": 22, "desc": "砂から半導体まで、文明=元素の並べ直しを11章で辿る本。" }},
+    { "id": "ningen-zukan", "name": "人間図鑑", "icon": "👥", "attrs": { "category": "product", "color": "#06d6a0", "radius": 20, "desc": "37枚のカードで構成される人間観察図鑑。" }},
+    { "id": "maiten", "name": "まいてんch", "icon": "🎮", "attrs": { "category": "product", "color": "#06d6a0", "radius": 20, "desc": "まいこ&ケンシロウの2人ゲーム配信チャンネル。" }},
+    { "id": "ecg", "name": "ECG", "icon": "🃏", "attrs": { "category": "product", "color": "#06d6a0", "radius": 20, "desc": "Empire Card Game。Web solitaire → 多人数 → Steam 構想。" }},
+    { "id": "novel-05", "name": "0.5の魔女", "icon": "🧙", "attrs": { "category": "product", "color": "#06d6a0", "radius": 22, "desc": "int社会がfloat存在を裁く二重螺旋物語。Boolean→Float の物語化。" }},
+
+    { "id": "paper-a", "name": "Paper A", "icon": "📄", "attrs": { "category": "paper", "color": "#118ab2", "radius": 18, "desc": "Phenomenology & Cognitive Sciences 投稿。" }},
+    { "id": "paper-b", "name": "Paper B", "icon": "📄", "attrs": { "category": "paper", "color": "#118ab2", "radius": 20, "desc": "Postdigital Science & Education。R&R済み、6/24締切。" }},
+    { "id": "paper-7", "name": "Paper 7", "icon": "📄", "attrs": { "category": "paper", "color": "#118ab2", "radius": 18, "desc": "Philosophical Psychology 審査中。" }},
+    { "id": "paper-8", "name": "Paper 8", "icon": "📄", "attrs": { "category": "paper", "color": "#118ab2", "radius": 18, "desc": "New Ideas in Psychology 審査中。" }},
+    { "id": "paper-9", "name": "Paper 9", "icon": "🔑", "attrs": { "category": "paper", "color": "#118ab2", "radius": 22, "desc": "The Decryption Key。復号可能性としてのプライバシー、積分民主主義、三段階モデル。" }},
+    { "id": "paper-10", "name": "Paper 10 (VR)", "icon": "🌌", "attrs": { "category": "paper", "color": "#118ab2", "radius": 22, "desc": "Visualize Rule: layered framework for citizen-accessible data exploration. 構想段階。" }},
+
+    { "id": "triple-naming", "name": "三重がけ命名法", "icon": "🎭", "attrs": { "category": "method", "color": "#ffd166", "radius": 20, "desc": "音韻×意味×構造の3層で機能するタイトル設計手法。" }},
+    { "id": "idea-forge", "name": "ideaForge 3型", "icon": "🔥", "attrs": { "category": "method", "color": "#ffd166", "radius": 18, "desc": "着火渓流型 / 沈没釣り上げ型 / 横串剪定型。" }},
+    { "id": "distilled-philosophy", "name": "Distilled Philosophy", "icon": "💧", "attrs": { "category": "method", "color": "#ffd166", "radius": 18, "desc": "哲学を蒸留して日常UIに溶かす手法。" }}
+  ],
+  "relations": [
+    { "id": "r01", "source": "boolean-float", "target": "wakkazukan", "kind": "embodies", "weight": 0.95, "status": "confirmed", "evidence": "分類の連続切替が Boolean→Float の UI 実装そのもの" },
+    { "id": "r02", "source": "boolean-float", "target": "banet-map", "kind": "embodies", "weight": 0.95, "status": "confirmed", "evidence": "関係の強さを Float weight で表現、状態を3値Float化" },
+    { "id": "r03", "source": "boolean-float", "target": "novel-05", "kind": "embodies", "weight": 0.98, "status": "confirmed", "evidence": "int社会 vs float存在の物語構造そのもの" },
+    { "id": "r04", "source": "boolean-float", "target": "paper-a", "kind": "embodies", "weight": 0.85, "status": "confirmed" },
+    { "id": "r05", "source": "boolean-float", "target": "paper-9", "kind": "embodies", "weight": 0.90, "status": "confirmed", "evidence": "三段階モデル D1×D2×D3×I は Float の積分" },
+    { "id": "r06", "source": "boolean-float", "target": "paper-7", "kind": "embodies", "weight": 0.80, "status": "confirmed" },
+    { "id": "r07", "source": "meguru", "target": "satori", "kind": "embodies", "weight": 0.65, "status": "confirmed" },
+    { "id": "r08", "source": "meguru", "target": "ecg", "kind": "embodies", "weight": 0.55, "status": "confirmed" },
+    { "id": "r09", "source": "fuyoudo", "target": "visionium", "kind": "implements", "weight": 0.80, "status": "confirmed", "evidence": "文脈を劣化させない設計原則が Visionium ブランドの根幹" },
+    { "id": "r10", "source": "visionium", "target": "wakkazukan", "kind": "embodies", "weight": 0.85, "status": "confirmed" },
+    { "id": "r11", "source": "visionium", "target": "banet-map", "kind": "embodies", "weight": 0.85, "status": "confirmed" },
+    { "id": "r12", "source": "visionium", "target": "meguru", "kind": "extends", "weight": 0.75, "status": "confirmed", "evidence": "Visionium = 思想資本、MEGURU = その生態系表現" },
+
+    { "id": "r13", "source": "wakkazukan", "target": "banet-map", "kind": "extends", "weight": 0.95, "status": "confirmed", "evidence": "同じデータを分類→関係の別角度で見る。次の皿。" },
+    { "id": "r14", "source": "materials", "target": "ningen-zukan", "kind": "extends", "weight": 0.60, "status": "confirmed", "evidence": "図鑑シリーズ、同じ観察-分類-命名のメソッド" },
+    { "id": "r15", "source": "satori", "target": "maiten", "kind": "extends", "weight": 0.45, "status": "confirmed" },
+
+    { "id": "r16", "source": "paper-a", "target": "paper-b", "kind": "cites", "weight": 0.60, "status": "confirmed" },
+    { "id": "r17", "source": "paper-9", "target": "boolean-float", "kind": "cites", "weight": 0.95, "status": "confirmed" },
+    { "id": "r18", "source": "paper-7", "target": "boolean-float", "kind": "cites", "weight": 0.75, "status": "confirmed" },
+    { "id": "r19", "source": "paper-8", "target": "boolean-float", "kind": "cites", "weight": 0.70, "status": "confirmed" },
+    { "id": "r20", "source": "paper-10", "target": "paper-b", "kind": "cites", "weight": 0.55, "status": "hypothesis", "evidence": "Postdigital への二度目の投稿可能性" },
+
+    { "id": "r21", "source": "triple-naming", "target": "wakkazukan", "kind": "implements", "weight": 0.80, "status": "confirmed", "evidence": "「わっか+ずかん」の音韻と意味と構造" },
+    { "id": "r22", "source": "triple-naming", "target": "banet-map", "kind": "implements", "weight": 0.80, "status": "confirmed", "evidence": "「バネ+ットマップ」の音韻×物理×比喩" },
+    { "id": "r23", "source": "triple-naming", "target": "satori", "kind": "implements", "weight": 0.70, "status": "confirmed" },
+    { "id": "r24", "source": "idea-forge", "target": "visionium", "kind": "implements", "weight": 0.85, "status": "confirmed" },
+    { "id": "r25", "source": "distilled-philosophy", "target": "wakkazukan", "kind": "implements", "weight": 0.65, "status": "confirmed" },
+    { "id": "r26", "source": "distilled-philosophy", "target": "materials", "kind": "implements", "weight": 0.60, "status": "confirmed" },
+
+    { "id": "r27", "source": "banet-map", "target": "paper-10", "kind": "hypothesizes", "weight": 0.90, "status": "hypothesis", "evidence": "このアプリ自体が Paper 10 VR フレームワークの実装実証になる" },
+    { "id": "r28", "source": "wakkazukan", "target": "paper-10", "kind": "hypothesizes", "weight": 0.75, "status": "hypothesis", "evidence": "Level-1 分類ビューアの先行実装として Paper 10 に位置付く" }
+  ],
+  "axes": [
+    { "id": "by-category", "title": "カテゴリで分ける", "groupBy": "attrs.category" }
+  ]
 }
