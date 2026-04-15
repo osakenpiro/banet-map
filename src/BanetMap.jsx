@@ -79,8 +79,11 @@ export default function BanetMap() {
           onHoverEdge={setHoveredEdge}
         />
         <Legend phase={phase} />
-        {phase > 0 && (
+        {phase === 1 && (
           <FocusPanel focus={focus} allNodes={data.nodes} relations={data.relations} onClear={clearFocus} />
+        )}
+        {phase === 2 && (
+          <PairOverlay focus={focus} allNodes={data.nodes} relations={data.relations} onClear={clearFocus} />
         )}
         {hoveredEdge && phase === 0 && <EdgeTooltip data={hoveredEdge} allNodes={data.nodes} />}
       </main>
@@ -276,7 +279,7 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
   })
 
   return (
-    <div ref={wrapRef} style={{ position:'absolute', inset:0 }}>
+    <div ref={wrapRef} style={{ position:'absolute', inset:0, transition:'filter 0.4s', filter: phase===2 ? 'blur(3px) brightness(0.4)' : 'none' }}>
       <svg ref={svgRef} width="100%" height="100%"
         style={{ display:'block', userSelect:'none', touchAction:'none', background:'#0b0f1a' }}
         onClick={() => { if(focus.length>0) onClearFocus() }}
@@ -505,6 +508,134 @@ function FocusPanel({ focus, allNodes, relations, onClear }) {
 
       <div style={{marginTop:10,fontSize:11,color:'#5a6378'}}>
         {phase===1?'別のノードをクリック → 関係確認':'背景クリック or ✕ で解除'}
+      </div>
+    </div>
+  )
+}
+
+/* ── PairOverlay — Phase 2 専用ビュー ── */
+function PairOverlay({ focus, allNodes, relations, onClear }) {
+  const nodeA = allNodes.find(n=>n.id===focus[0])
+  const nodeB = allNodes.find(n=>n.id===focus[1])
+  const catA = CATEGORY_META[nodeA?.attrs?.category]
+  const catB = CATEGORY_META[nodeB?.attrs?.category]
+  const shapeG = (cat) => !cat?'':cat.shape==='circle'?'●':cat.shape==='square'?'■':cat.shape==='diamond'?'◆':'⬡'
+
+  const pairEdges = relations.filter(r => {
+    const sid=typeof r.source==='object'?r.source.id:r.source
+    const tid=typeof r.target==='object'?r.target.id:r.target
+    return (sid===focus[0]&&tid===focus[1])||(sid===focus[1]&&tid===focus[0])
+  })
+
+  // Find shared neighbors (2-hop bridges)
+  const aNeighbors = new Set(), bNeighbors = new Set()
+  relations.forEach(r => {
+    const sid=typeof r.source==='object'?r.source.id:r.source
+    const tid=typeof r.target==='object'?r.target.id:r.target
+    if (sid===focus[0]) aNeighbors.add(tid)
+    if (tid===focus[0]) aNeighbors.add(sid)
+    if (sid===focus[1]) bNeighbors.add(tid)
+    if (tid===focus[1]) bNeighbors.add(sid)
+  })
+  const bridges = [...aNeighbors].filter(id => bNeighbors.has(id) && id!==focus[0] && id!==focus[1])
+
+  const NodeCard = ({node, cat}) => (
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,minWidth:140}}>
+      <div style={{fontSize:56,lineHeight:1}}>{node?.icon}</div>
+      <div style={{fontSize:20,fontWeight:700,textAlign:'center'}}>{node?.name}</div>
+      {cat && <span style={{fontSize:12,padding:'2px 10px',borderRadius:10,background:cat.color+'22',color:cat.color,fontWeight:700}}>
+        {shapeG(cat)} {cat.label}
+      </span>}
+      {node?.attrs?.desc && <div style={{fontSize:12,color:'#8892b0',textAlign:'center',maxWidth:180}}>{node.attrs.desc}</div>}
+    </div>
+  )
+
+  const maxW = Math.max(...pairEdges.map(e=>e.weight||0), 0.1)
+
+  return (
+    <div style={{
+      position:'absolute', inset:0, zIndex:20,
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      background:'rgba(11,15,26,0.6)', backdropFilter:'blur(2px)',
+    }} onClick={onClear}>
+      <div style={{
+        background:'rgba(17,24,39,0.97)', border:'1px solid #ffd166',
+        borderRadius:20, padding:'32px 40px', maxWidth:720, width:'90%',
+        boxShadow:'0 8px 48px rgba(0,0,0,0.6), 0 0 30px rgba(255,209,102,0.08)',
+      }} onClick={e=>e.stopPropagation()}>
+
+        {/* Two nodes + sankey bands */}
+        <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:20}}>
+          <NodeCard node={nodeA} cat={catA}/>
+
+          {/* Edge bands (sankey-like) */}
+          <div style={{flex:1,display:'flex',flexDirection:'column',gap:10,padding:'0 20px',minWidth:200}}>
+            {pairEdges.length > 0 ? pairEdges.map(e => {
+              const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
+              const srcId=typeof e.source==='object'?e.source.id:e.source
+              const dir=srcId===focus[0]?'→':'←'
+              const bandH = Math.max(24, 16 + (e.weight||0.5)/maxW * 32)
+              return (
+                <div key={e.id} style={{position:'relative'}}>
+                  {/* Band */}
+                  <div style={{
+                    height:bandH, borderRadius:bandH/2,
+                    background:`linear-gradient(90deg, ${st.color}33, ${st.color}88, ${st.color}33)`,
+                    border:`1px solid ${st.color}66`,
+                    display:'flex', alignItems:'center', justifyContent:'center', gap:10,
+                    padding:'0 16px', cursor:'default',
+                  }}>
+                    <span style={{color:st.color,fontWeight:700,fontSize:13}}>{st.label}</span>
+                    <span style={{color:'#5a6378',fontSize:12}}>{dir}</span>
+                    <span style={{color:'#ffd166',fontWeight:700,fontSize:15}}>{e.weight?.toFixed(2)}</span>
+                  </div>
+                  {/* Evidence below band */}
+                  {e.evidence && (
+                    <div style={{fontSize:12,color:'#8892b0',marginTop:4,padding:'4px 12px',lineHeight:1.5}}>
+                      {e.evidence}
+                    </div>
+                  )}
+                </div>
+              )
+            }) : (
+              <div style={{textAlign:'center',color:'#5a6378',fontSize:14,fontStyle:'italic',padding:'20px 0'}}>
+                直接の関係なし
+              </div>
+            )}
+          </div>
+
+          <NodeCard node={nodeB} cat={catB}/>
+        </div>
+
+        {/* Bridges (shared neighbors) */}
+        {bridges.length > 0 && (
+          <div style={{borderTop:'1px solid #1e2640',paddingTop:12,marginTop:4}}>
+            <div style={{fontSize:12,color:'#5a6378',marginBottom:6}}>経由ノード（両者に接続）:</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {bridges.map(id => {
+                const n = allNodes.find(x=>x.id===id)
+                const c = CATEGORY_META[n?.attrs?.category]
+                return <span key={id} style={{padding:'4px 10px',background:'#0b0f1a',borderRadius:8,fontSize:12,display:'inline-flex',alignItems:'center',gap:4}}>
+                  {c && <span style={{color:c.color}}>{shapeG(c)}</span>}
+                  {n?.icon} {n?.name}
+                </span>
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* L2 expansion slot (future) */}
+        <div style={{borderTop:'1px solid #1e2640',paddingTop:12,marginTop:12,display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:11,color:'#5a6378'}}>🔮 将来: ここにL2チャート（棒グラフ・円グラフ・サンキー）が展開される</span>
+        </div>
+
+        {/* Close */}
+        <div style={{textAlign:'center',marginTop:16}}>
+          <button onClick={onClear} style={{
+            padding:'8px 24px',borderRadius:10,border:'1px solid #5a6378',
+            background:'transparent',color:'#8892b0',fontSize:13,cursor:'pointer',
+          }}>✕ 背景に戻る</button>
+        </div>
       </div>
     </div>
   )
