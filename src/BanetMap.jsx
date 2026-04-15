@@ -59,6 +59,7 @@ export default function BanetMap() {
   const [selected, setSelected] = useState(null)
   const [hoveredNode, setHoveredNode] = useState(null)
   const [hoveredEdge, setHoveredEdge] = useState(null) // { edge, x, y }
+  const [pairNodes, setPairNodes] = useState([]) // 0-2 node IDs for pair focus mode
   const [catFilter, setCatFilter] = useState(() => {
     const f = {}; for (const k of Object.keys(CATEGORY_META)) f[k] = true
     return f
@@ -93,8 +94,22 @@ export default function BanetMap() {
           onHoverNode={setHoveredNode}
           hoveredNodeId={hoveredNode?.id}
           onHoverEdge={setHoveredEdge}
+          pairNodes={pairNodes}
+          onPairNode={(id) => setPairNodes(prev => {
+            if (prev.includes(id)) return prev.filter(x => x !== id) // deselect
+            if (prev.length >= 2) return [prev[1], id] // rotate: drop oldest
+            return [...prev, id]
+          })}
         />
         <Legend />
+        {pairNodes.length === 2 && (
+          <PairPanel
+            pairNodes={pairNodes}
+            allNodes={data.nodes}
+            relations={data.relations}
+            onClear={() => setPairNodes([])}
+          />
+        )}
         {hoveredEdge && <EdgeTooltip data={hoveredEdge} allNodes={data.nodes} />}
         {selected && <DetailCard data={selected} onClose={() => setSelected(null)} allNodes={data.nodes} />}
       </main>
@@ -141,7 +156,7 @@ function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleC
 }
 
 /* ── Graph ── */
-function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPickEdge, onHoverNode, hoveredNodeId, onHoverEdge }) {
+function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPickEdge, onHoverNode, hoveredNodeId, onHoverEdge, pairNodes, onPairNode }) {
   const svgRef = useRef(null)
   const gRef = useRef(null)
   const wrapRef = useRef(null)
@@ -260,17 +275,34 @@ function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPick
     if (!ds) return
     if (simRef.current) simRef.current.alphaTarget(0)
     d.fx = null; d.fy = null
-    if (!ds.moved) onPickNode(nodes.find(n => n.id === d.id))
+    if (!ds.moved) {
+      if (e.shiftKey) {
+        onPairNode(d.id) // Shift+click → pair focus mode
+      } else {
+        onPickNode(nodes.find(n => n.id === d.id))
+      }
+    }
     dragState.current = null
     try { e.currentTarget.releasePointerCapture(e.pointerId) } catch {}
   }
 
   // Visibility
+  const pairActive = pairNodes.length === 2
+  const pairSet = new Set(pairNodes)
+
   const edgeIsRelated = (link) => {
-    if (!hoveredNodeId) return true
     const sid = typeof link.source === 'object' ? link.source.id : link.source
     const tid = typeof link.target === 'object' ? link.target.id : link.target
+    // Pair mode: only edges between the two selected nodes
+    if (pairActive) return pairSet.has(sid) && pairSet.has(tid)
+    // Normal hover mode
+    if (!hoveredNodeId) return true
     return sid === hoveredNodeId || tid === hoveredNodeId
+  }
+
+  const nodeDimmed = (id) => {
+    if (pairActive) return !pairSet.has(id)
+    return false
   }
 
   const nodeVisible = (n) => catFilter[n.attrs?.category] !== false
@@ -385,23 +417,33 @@ function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPick
               const r = d._r
               const color = d.attrs?.color || '#8892b0'
               const isHovered = hoveredNodeId === d.id
+              const isPaired = pairSet.has(d.id)
+              const isDimmed = nodeDimmed(d.id)
               const cat = d.attrs?.category
               const shape = CATEGORY_META[cat]?.shape || 'circle'
               const deg = degreeMap[d.id] || 0
-              // Glow for high-degree nodes
               const glowR = deg >= 6 ? r + 6 : 0
               return (
                 <g key={d.id}
                   transform={`translate(${d.x || 0},${d.y || 0})`}
-                  style={{ cursor: 'grab' }}
+                  style={{ cursor: 'grab', opacity: isDimmed ? 0.2 : 1, transition: 'opacity .3s' }}
                   onPointerDown={(e) => onPointerDownNode(e, d)}
                   onPointerMove={onPointerMoveNode}
                   onPointerUp={(e) => onPointerUpNode(e, d)}
                   onPointerEnter={() => onHoverNode(d)}
                   onPointerLeave={() => onHoverNode(null)}
                 >
+                  {/* Pair selection ring */}
+                  {isPaired && (
+                    <circle r={r + 8} fill="none" stroke="#ffd166" strokeWidth={3}
+                      strokeDasharray="6 4" opacity={0.9}>
+                      <animateTransform attributeName="transform" type="rotate"
+                        from="0" to="360" dur="8s" repeatCount="indefinite" />
+                    </circle>
+                  )}
+
                   {/* Glow halo for hub nodes */}
-                  {glowR > 0 && (
+                  {glowR > 0 && !isDimmed && (
                     <circle r={glowR} fill="none" stroke={color} strokeWidth={1.2}
                       strokeOpacity={0.25} style={{ filter: `drop-shadow(0 0 ${deg}px ${color})` }} />
                   )}
@@ -469,6 +511,81 @@ function ZoomBtn({ label, onClick }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backdropFilter: 'blur(6px)',
     }}>{label}</button>
+  )
+}
+
+/* ── PairPanel — 二者間注視モード ── */
+function PairPanel({ pairNodes, allNodes, relations, onClear }) {
+  const [a, b] = pairNodes
+  const nodeA = allNodes.find(n => n.id === a)
+  const nodeB = allNodes.find(n => n.id === b)
+
+  // Find all direct edges between the pair
+  const pairEdges = relations.filter(r => {
+    const sid = typeof r.source === 'object' ? r.source.id : r.source
+    const tid = typeof r.target === 'object' ? r.target.id : r.target
+    return (sid === a && tid === b) || (sid === b && tid === a)
+  })
+
+  return (
+    <div style={{
+      position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
+      background: 'rgba(17, 24, 39, 0.95)',
+      border: '1px solid #ffd166', borderRadius: 12,
+      padding: '14px 20px', fontSize: 13, color: '#e4e8f0',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+      backdropFilter: 'blur(8px)',
+      maxWidth: 480, width: 'max-content',
+      zIndex: 15,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: pairEdges.length ? 12 : 0 }}>
+        <span style={{ fontSize: 22 }}>{nodeA?.icon}</span>
+        <span style={{ fontWeight: 700 }}>{nodeA?.name}</span>
+        <span style={{ color: '#ffd166', fontSize: 18 }}>⇄</span>
+        <span style={{ fontWeight: 700 }}>{nodeB?.name}</span>
+        <span style={{ fontSize: 22 }}>{nodeB?.icon}</span>
+        <button onClick={onClear} style={{
+          marginLeft: 'auto', background: 'transparent', border: '1px solid #5a6378',
+          color: '#8892b0', fontSize: 11, padding: '4px 10px', borderRadius: 6,
+          cursor: 'pointer',
+        }}>✕ 解除</button>
+      </div>
+
+      {pairEdges.length === 0 ? (
+        <div style={{ color: '#5a6378', fontSize: 12, fontStyle: 'italic' }}>
+          直接の関係はありません
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {pairEdges.map(e => {
+            const style = KIND_STYLE[e.kind] || { label: e.kind, color: '#8892b0' }
+            const srcId = typeof e.source === 'object' ? e.source.id : e.source
+            const dir = srcId === a ? '→' : '←'
+            return (
+              <div key={e.id} style={{
+                padding: '8px 12px', background: '#0b0f1a', borderRadius: 8,
+                borderLeft: `3px solid ${style.color}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ color: style.color, fontWeight: 700, fontSize: 11 }}>{style.label}</span>
+                  <span style={{ color: '#5a6378', fontSize: 11 }}>{dir}</span>
+                  <span style={{ marginLeft: 'auto', color: '#ffd166', fontWeight: 600, fontSize: 12 }}>
+                    w={e.weight?.toFixed(2)}
+                  </span>
+                </div>
+                {e.evidence && (
+                  <div style={{ fontSize: 11, color: '#8892b0' }}>{e.evidence}</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ marginTop: 8, fontSize: 10, color: '#5a6378' }}>
+        Shift+クリックでノードを選択/解除
+      </div>
+    </div>
   )
 }
 
@@ -545,7 +662,8 @@ function Legend() {
         線の太さ = weight (Float)<br />
         ノードサイズ = 接続数(自動) · 右上=degree<br />
         ホイールでズーム · 背景ドラッグでパン<br />
-        ノードをドラッグ可 · クリックで詳細
+        ノードをドラッグ可 · クリックで詳細<br />
+        Shift+クリック×2 → 二者間注視
       </div>
     </div>
   )
