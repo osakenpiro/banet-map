@@ -58,6 +58,7 @@ export default function BanetMap() {
   const [showHypothesis, setShowHypothesis] = useState(true)
   const [selected, setSelected] = useState(null)
   const [hoveredNode, setHoveredNode] = useState(null)
+  const [hoveredEdge, setHoveredEdge] = useState(null) // { edge, x, y }
   const [catFilter, setCatFilter] = useState(() => {
     const f = {}; for (const k of Object.keys(CATEGORY_META)) f[k] = true
     return f
@@ -91,8 +92,10 @@ export default function BanetMap() {
           onPickEdge={(e) => setSelected({ type: 'edge', payload: e })}
           onHoverNode={setHoveredNode}
           hoveredNodeId={hoveredNode?.id}
+          onHoverEdge={setHoveredEdge}
         />
         <Legend />
+        {hoveredEdge && <EdgeTooltip data={hoveredEdge} allNodes={data.nodes} />}
         {selected && <DetailCard data={selected} onClose={() => setSelected(null)} allNodes={data.nodes} />}
       </main>
     </div>
@@ -138,7 +141,7 @@ function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleC
 }
 
 /* ── Graph ── */
-function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPickEdge, onHoverNode, hoveredNodeId }) {
+function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPickEdge, onHoverNode, hoveredNodeId, onHoverEdge }) {
   const svgRef = useRef(null)
   const gRef = useRef(null)
   const wrapRef = useRef(null)
@@ -334,7 +337,12 @@ function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPick
                 const ey = ty - (d2y / len2) * tr
                 const pathD = `M${sx},${sy} Q${mx},${my} ${ex},${ey}`
                 return (
-                  <g key={l.id} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onPickEdge(l) }}>
+                  <g key={l.id} style={{ cursor: 'pointer' }}
+                    onClick={(e) => { e.stopPropagation(); onPickEdge(l) }}
+                    onPointerEnter={(e) => onHoverEdge({ edge: l, x: e.clientX, y: e.clientY })}
+                    onPointerMove={(e) => onHoverEdge({ edge: l, x: e.clientX, y: e.clientY })}
+                    onPointerLeave={() => onHoverEdge(null)}
+                  >
                     <path d={pathD} fill="none"
                       stroke={stroke}
                       strokeWidth={1 + (l.weight || 0.5) * 3}
@@ -351,7 +359,12 @@ function Graph({ nodes, relations, showHypothesis, catFilter, onPickNode, onPick
               const ex = tx - (dx / len) * tr
               const ey = ty - (dy / len) * tr
               return (
-                <g key={l.id} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onPickEdge(l) }}>
+                <g key={l.id} style={{ cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); onPickEdge(l) }}
+                  onPointerEnter={(e) => onHoverEdge({ edge: l, x: e.clientX, y: e.clientY })}
+                  onPointerMove={(e) => onHoverEdge({ edge: l, x: e.clientX, y: e.clientY })}
+                  onPointerLeave={() => onHoverEdge(null)}
+                >
                   <line x1={sx} y1={sy} x2={ex} y2={ey}
                     stroke={stroke}
                     strokeWidth={1 + (l.weight || 0.5) * 3}
@@ -456,6 +469,44 @@ function ZoomBtn({ label, onClick }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backdropFilter: 'blur(6px)',
     }}>{label}</button>
+  )
+}
+
+/* ── EdgeTooltip ── */
+function EdgeTooltip({ data, allNodes }) {
+  const { edge, x, y } = data
+  const style = KIND_STYLE[edge.kind] || { label: edge.kind, color: '#8892b0' }
+  const src = allNodes.find(n => n.id === (typeof edge.source === 'object' ? edge.source.id : edge.source))
+  const tgt = allNodes.find(n => n.id === (typeof edge.target === 'object' ? edge.target.id : edge.target))
+  const statusEmoji = edge.status === 'hypothesis' ? '🔮' : edge.status === 'refuted' ? '❌' : '✅'
+  return (
+    <div style={{
+      position: 'fixed', left: x + 14, top: y - 10,
+      background: 'rgba(17, 24, 39, 0.95)',
+      border: `1px solid ${style.color}44`,
+      borderLeft: `3px solid ${style.color}`,
+      borderRadius: 8, padding: '8px 12px',
+      fontSize: 12, color: '#e4e8f0',
+      pointerEvents: 'none', zIndex: 20,
+      maxWidth: 280, lineHeight: 1.5,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+      backdropFilter: 'blur(6px)',
+    }}>
+      <div style={{ fontWeight: 700, color: style.color, fontSize: 11, marginBottom: 4 }}>
+        {style.label} {statusEmoji}
+      </div>
+      <div style={{ marginBottom: 4 }}>
+        {src?.icon} {src?.name} <span style={{ color: style.color }}>→</span> {tgt?.icon} {tgt?.name}
+      </div>
+      <div style={{ color: '#ffd166', fontWeight: 600 }}>
+        weight: {edge.weight?.toFixed(2)}
+      </div>
+      {edge.evidence && (
+        <div style={{ marginTop: 4, fontSize: 11, color: '#8892b0', fontStyle: 'italic' }}>
+          {edge.evidence}
+        </div>
+      )}
+    </div>
   )
 }
 
