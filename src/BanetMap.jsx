@@ -384,107 +384,126 @@ function FocusPanel({ focus, allNodes, relations, onClear }) {
   const colorA = nodeA?.attrs?.color||'#8892b0'
   const catA = CATEGORY_META[nodeA?.attrs?.category]
   const catB = nodeB ? CATEGORY_META[nodeB?.attrs?.category] : null
+  const shapeG = (cat) => !cat ? '' : cat.shape==='circle'?'●':cat.shape==='square'?'■':cat.shape==='diamond'?'◆':'⬡'
 
   const pairEdges = phase===2 ? relations.filter(r => {
     const sid=typeof r.source==='object'?r.source.id:r.source
     const tid=typeof r.target==='object'?r.target.id:r.target
     return (sid===focus[0]&&tid===focus[1])||(sid===focus[1]&&tid===focus[0])
   }) : []
-
   const connections = phase===1 ? relations.filter(r => {
     const sid=typeof r.source==='object'?r.source.id:r.source
     const tid=typeof r.target==='object'?r.target.id:r.target
     return sid===focus[0]||tid===focus[0]
   }).sort((a,b)=>(b.weight||0)-(a.weight||0)) : []
+  const usedKinds = new Set((phase===1 ? connections : pairEdges).map(e=>e.kind))
 
-  const WBar = ({w, color}) => (
-    <div style={{width:48,height:5,background:'#1e2640',borderRadius:3,overflow:'hidden',flexShrink:0}}>
+  const WBar = ({w, color, width}) => (
+    <div style={{width:width||52,height:6,background:'#1e2640',borderRadius:3,overflow:'hidden',flexShrink:0}}>
       <div style={{height:'100%',width:`${(w||0)*100}%`,background:color,borderRadius:3}}/>
     </div>
   )
+  const ShapeBadge = ({cat}) => cat ? (
+    <span style={{fontSize:12,padding:'2px 8px',borderRadius:8,background:cat.color+'22',color:cat.color,fontWeight:700,display:'inline-flex',alignItems:'center',gap:4}}>
+      <span style={{fontSize:13}}>{shapeG(cat)}</span> {cat.label}
+    </span>
+  ) : null
 
   return (
     <div style={{
       position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',
       background:'rgba(17,24,39,0.95)',
       border:`1px solid ${phase===2?'#ffd166':colorA}`,
-      borderRadius:14,padding:'16px 22px',fontSize:13,color:'#e4e8f0',
+      borderRadius:14,padding:'18px 24px',fontSize:14,color:'#e4e8f0',
       boxShadow:`0 4px 24px rgba(0,0,0,0.5)${phase===2?', 0 0 20px rgba(255,209,102,0.1)':''}`,
       backdropFilter:'blur(8px)',
-      maxWidth:phase===2?620:560,width:'max-content',zIndex:15,transition:'all 0.3s',
+      maxWidth:phase===2?660:600,width:'max-content',zIndex:15,transition:'all 0.3s',
     }}>
-      {/* Header: node(s) */}
-      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
-        <span style={{fontSize:phase===2?36:28}}>{nodeA?.icon}</span>
+      <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
+        <span style={{fontSize:phase===2?40:34}}>{nodeA?.icon}</span>
         <div>
-          <div style={{fontSize:phase===2?18:16,fontWeight:700}}>{nodeA?.name}</div>
-          <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
-            {catA && <span style={{fontSize:10,padding:'1px 6px',borderRadius:8,background:catA.color+'22',color:catA.color,fontWeight:600}}>{catA.label}</span>}
-            {nodeA?.attrs?.desc && <span style={{fontSize:11,color:'#8892b0'}}>{nodeA.attrs.desc}</span>}
+          <div style={{fontSize:phase===2?20:18,fontWeight:700}}>{nodeA?.name}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginTop:3}}>
+            <ShapeBadge cat={catA}/>
+            {nodeA?.attrs?.desc && <span style={{fontSize:13,color:'#8892b0'}}>{nodeA.attrs.desc}</span>}
           </div>
         </div>
         {phase===2 && <>
-          <div style={{display:'flex',flexDirection:'column',alignItems:'center',margin:'0 4px'}}>
-            <span style={{color:'#ffd166',fontSize:22}}>⇄</span>
-            {pairEdges.length>0 && <span style={{fontSize:9,color:'#ffd166'}}>{pairEdges.length}本</span>}
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',margin:'0 6px'}}>
+            <span style={{color:'#ffd166',fontSize:24}}>⇄</span>
+            {pairEdges.length>0 && <span style={{fontSize:11,color:'#ffd166',fontWeight:600}}>{pairEdges.length}本</span>}
           </div>
-          <span style={{fontSize:36}}>{nodeB?.icon}</span>
+          <span style={{fontSize:40}}>{nodeB?.icon}</span>
           <div>
-            <div style={{fontSize:18,fontWeight:700}}>{nodeB?.name}</div>
-            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
-              {catB && <span style={{fontSize:10,padding:'1px 6px',borderRadius:8,background:catB.color+'22',color:catB.color,fontWeight:600}}>{catB.label}</span>}
-              {nodeB?.attrs?.desc && <span style={{fontSize:11,color:'#8892b0'}}>{nodeB.attrs.desc}</span>}
+            <div style={{fontSize:20,fontWeight:700}}>{nodeB?.name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:3}}>
+              <ShapeBadge cat={catB}/>
+              {nodeB?.attrs?.desc && <span style={{fontSize:13,color:'#8892b0'}}>{nodeB.attrs.desc}</span>}
             </div>
           </div>
         </>}
-        <button onClick={onClear} style={{marginLeft:'auto',background:'transparent',border:'1px solid #5a6378',color:'#8892b0',fontSize:12,padding:'5px 12px',borderRadius:8,cursor:'pointer',whiteSpace:'nowrap'}}>✕ 解除</button>
+        <button onClick={onClear} style={{marginLeft:'auto',background:'transparent',border:'1px solid #5a6378',color:'#8892b0',fontSize:13,padding:'6px 14px',borderRadius:8,cursor:'pointer',whiteSpace:'nowrap'}}>✕ 解除</button>
       </div>
 
-      {/* Phase 1: connections with weight bars */}
+      {usedKinds.size > 0 && (
+        <div style={{display:'flex',gap:10,marginBottom:10,padding:'6px 10px',background:'#0d1117',borderRadius:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:11,color:'#5a6378',alignSelf:'center'}}>線の意味:</span>
+          {[...usedKinds].map(k => {
+            const st = KIND_STYLE[k]||{label:k,color:'#8892b0'}
+            return <span key={k} style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:12}}>
+              <span style={{display:'inline-block',width:18,height:3,background:st.color,borderRadius:2}}/>
+              <span style={{color:st.color,fontWeight:600}}>{st.label}</span>
+            </span>
+          })}
+        </div>
+      )}
+
       {phase===1 && connections.length>0 && (
-        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
           {connections.map(e => {
             const sid=typeof e.source==='object'?e.source.id:e.source
             const tid=typeof e.target==='object'?e.target.id:e.target
             const otherId=sid===focus[0]?tid:sid
             const other=allNodes.find(n=>n.id===otherId)
+            const otherCat=CATEGORY_META[other?.attrs?.category]
             const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
             const dir=sid===focus[0]?'→':'←'
-            return <div key={e.id} style={{padding:'5px 10px',background:'#0b0f1a',borderRadius:8,borderLeft:`3px solid ${st.color}`,fontSize:11,display:'flex',alignItems:'center',gap:6}}>
-              <span style={{color:st.color,fontWeight:600}}>{st.label}</span>
+            return <div key={e.id} style={{padding:'6px 12px',background:'#0b0f1a',borderRadius:8,borderLeft:`3px solid ${st.color}`,fontSize:13,display:'flex',alignItems:'center',gap:7}}>
+              <span style={{color:st.color,fontWeight:700}}>{st.label}</span>
               <span style={{color:'#5a6378'}}>{dir}</span>
-              <span>{other?.icon} {other?.name}</span>
+              {otherCat && <span style={{color:otherCat.color,fontSize:12}}>{shapeG(otherCat)}</span>}
+              <span style={{fontWeight:600}}>{other?.icon} {other?.name}</span>
               <WBar w={e.weight} color={st.color}/>
+              <span style={{color:'#ffd166',fontWeight:600,fontSize:12}}>{e.weight?.toFixed(2)}</span>
             </div>
           })}
         </div>
       )}
-      {phase===1 && connections.length===0 && <div style={{color:'#5a6378',fontSize:12,fontStyle:'italic'}}>接続なし</div>}
+      {phase===1 && connections.length===0 && <div style={{color:'#5a6378',fontSize:13,fontStyle:'italic'}}>接続なし</div>}
 
-      {/* Phase 2: pair edge details (large) */}
       {phase===2 && pairEdges.length>0 && (
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {pairEdges.map(e => {
             const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
             const srcId=typeof e.source==='object'?e.source.id:e.source
             const dir=srcId===focus[0]?'→':'←'
-            return <div key={e.id} style={{padding:'10px 14px',background:'#0b0f1a',borderRadius:10,borderLeft:`4px solid ${st.color}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-                <span style={{color:st.color,fontWeight:700,fontSize:13}}>{st.label}</span>
-                <span style={{color:'#5a6378',fontSize:12}}>{dir}</span>
-                <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
-                  <WBar w={e.weight} color={st.color}/>
-                  <span style={{color:'#ffd166',fontWeight:700,fontSize:14}}>{e.weight?.toFixed(2)}</span>
+            return <div key={e.id} style={{padding:'12px 16px',background:'#0b0f1a',borderRadius:10,borderLeft:`4px solid ${st.color}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:e.evidence?8:0}}>
+                <span style={{color:st.color,fontWeight:700,fontSize:15}}>{st.label}</span>
+                <span style={{color:'#5a6378',fontSize:14}}>{dir}</span>
+                <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:10}}>
+                  <WBar w={e.weight} color={st.color} width={64}/>
+                  <span style={{color:'#ffd166',fontWeight:700,fontSize:16}}>{e.weight?.toFixed(2)}</span>
                 </div>
               </div>
-              {e.evidence && <div style={{fontSize:12,color:'#c4c9d4',lineHeight:1.5,padding:'6px 8px',background:'#111827',borderRadius:6}}>{e.evidence}</div>}
+              {e.evidence && <div style={{fontSize:13,color:'#c4c9d4',lineHeight:1.6,padding:'8px 10px',background:'#111827',borderRadius:6}}>{e.evidence}</div>}
             </div>
           })}
         </div>
       )}
-      {phase===2 && pairEdges.length===0 && <div style={{color:'#5a6378',fontSize:12,fontStyle:'italic',padding:'4px 0'}}>直接の関係なし — 経由ノードは半透明で表示中</div>}
+      {phase===2 && pairEdges.length===0 && <div style={{color:'#5a6378',fontSize:13,fontStyle:'italic',padding:'4px 0'}}>直接の関係なし — 経由ノードは半透明で表示中</div>}
 
-      <div style={{marginTop:8,fontSize:10,color:'#5a6378'}}>
+      <div style={{marginTop:10,fontSize:11,color:'#5a6378'}}>
         {phase===1?'別のノードをクリック → 関係確認':'背景クリック or ✕ で解除'}
       </div>
     </div>
