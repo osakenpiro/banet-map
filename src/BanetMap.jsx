@@ -408,18 +408,18 @@ function FocusPanel({ focus, allNodes, relations, onClear, onNodeFocus }) {
 
   return (
     <div style={{
-      position:'absolute',top:0,right:0,bottom:0,width:340,
+      position:'absolute',top:0,right:0,bottom:0,width:'50%',minWidth:360,maxWidth:600,
       background:'rgba(17,24,39,0.97)',borderLeft:'1px solid #1e2640',
       display:'flex',flexDirection:'column',zIndex:15,
       boxShadow:'-4px 0 24px rgba(0,0,0,0.4)',
       backdropFilter:'blur(8px)',
     }}>
       {/* Node header */}
-      <div style={{padding:'18px 20px 14px',borderBottom:'1px solid #1e2640'}}>
+      <div style={{padding:'20px 24px 16px',borderBottom:'1px solid #1e2640'}}>
         <div style={{display:'flex',alignItems:'center',gap:12}}>
           <span style={{fontSize:36}}>{nodeA?.icon}</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:20,fontWeight:700,color:'#e4e8f0'}}>{nodeA?.name}</div>
+            <div style={{fontSize:22,fontWeight:700,color:'#e4e8f0'}}>{nodeA?.name}</div>
             <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3}}>
               {catA && <span style={{fontSize:13,padding:'2px 8px',borderRadius:8,background:catA.color+'22',color:catA.color,fontWeight:700,display:'inline-flex',alignItems:'center',gap:4}}>
                 <span>{shapeG(catA)}</span> {catA.label}
@@ -432,7 +432,7 @@ function FocusPanel({ focus, allNodes, relations, onClear, onNodeFocus }) {
       </div>
 
       {/* Kind filter + sort */}
-      <div style={{padding:'10px 20px',borderBottom:'1px solid #1e2640',display:'flex',flexDirection:'column',gap:8}}>
+      <div style={{padding:'12px 24px',borderBottom:'1px solid #1e2640',display:'flex',flexDirection:'column',gap:8}}>
         <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
           <button onClick={()=>setKindFilter(null)} style={{
             padding:'3px 10px',fontSize:11,fontWeight:600,borderRadius:10,cursor:'pointer',border:'none',
@@ -471,7 +471,7 @@ function FocusPanel({ focus, allNodes, relations, onClear, onNodeFocus }) {
           const barW = ((e.weight||0)/maxW)*100
           const statusEmoji = e.status==='hypothesis'?'🔮':e.status==='refuted'?'❌':''
           return <div key={e.id} onClick={()=>onNodeFocus&&onNodeFocus(otherId)}
-            style={{padding:'10px 20px',cursor:'pointer',borderBottom:'1px solid #111827',
+            style={{padding:'12px 24px',cursor:'pointer',borderBottom:'1px solid #111827',
               transition:'background 0.15s',
             }}
             onMouseEnter={ev=>ev.currentTarget.style.background='#1a1f35'}
@@ -481,15 +481,15 @@ function FocusPanel({ focus, allNodes, relations, onClear, onNodeFocus }) {
               <span style={{color:st.color,fontWeight:700,fontSize:12}}>{st.label}</span>
               <span style={{color:'#5a6378',fontSize:12}}>{dir}</span>
               {otherCat && <span style={{color:otherCat.color,fontSize:11}}>{shapeG(otherCat)}</span>}
-              <span style={{fontWeight:600,fontSize:14,color:'#e4e8f0'}}>{other?.icon} {other?.name}</span>
+              <span style={{fontWeight:600,fontSize:16,color:'#e4e8f0'}}>{other?.icon} {other?.name}</span>
               {statusEmoji && <span style={{fontSize:11}}>{statusEmoji}</span>}
             </div>
             {/* Weight bar */}
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <div style={{flex:1,height:8,background:'#111827',borderRadius:4,overflow:'hidden'}}>
+              <div style={{flex:1,height:10,background:'#111827',borderRadius:5,overflow:'hidden'}}>
                 <div style={{height:'100%',width:barW+'%',background:st.color,borderRadius:4,transition:'width 0.3s'}}/>
               </div>
-              <span style={{color:'#ffd166',fontWeight:700,fontSize:14,minWidth:36,textAlign:'right'}}>{e.weight?.toFixed(2)}</span>
+              <span style={{color:'#ffd166',fontWeight:700,fontSize:16,minWidth:40,textAlign:'right'}}>{e.weight?.toFixed(2)}</span>
             </div>
             {e.evidence && <div style={{fontSize:11,color:'#8892b0',marginTop:4,paddingLeft:12}}>{e.evidence}</div>}
           </div>
