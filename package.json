@@ -1,0 +1,24 @@
+{
+  "name": "banet-map",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Force-directed relation visualizer with Float weights and hypothesis edges. VR v0.1 Level-1 viewer.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "d3-force": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-drag": "^3.0.0",
+    "d3-zoom": "^3.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}
