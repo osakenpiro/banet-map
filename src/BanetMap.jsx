@@ -450,7 +450,7 @@ function FocusPanel({ focus, allNodes, relations, onClear }) {
 
       {usedKinds.size > 0 && (
         <div style={{display:'flex',gap:10,marginBottom:10,padding:'6px 10px',background:'#0d1117',borderRadius:8,flexWrap:'wrap'}}>
-          <span style={{fontSize:11,color:'#5a6378',alignSelf:'center'}}>線の意味:</span>
+          <span style={{fontSize:13,color:'#5a6378',alignSelf:'center'}}>線の意味:</span>
           {[...usedKinds].map(k => {
             const st = KIND_STYLE[k]||{label:k,color:'#8892b0'}
             return <span key={k} style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:12}}>
@@ -542,11 +542,11 @@ function PairOverlay({ focus, allNodes, relations, onClear }) {
   const NodeCard = ({node, cat}) => (
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,minWidth:140}}>
       <div style={{fontSize:56,lineHeight:1}}>{node?.icon}</div>
-      <div style={{fontSize:20,fontWeight:700,textAlign:'center'}}>{node?.name}</div>
-      {cat && <span style={{fontSize:12,padding:'2px 10px',borderRadius:10,background:cat.color+'22',color:cat.color,fontWeight:700}}>
+      <div style={{fontSize:24,fontWeight:700,textAlign:'center'}}>{node?.name}</div>
+      {cat && <span style={{fontSize:14,padding:'3px 12px',borderRadius:10,background:cat.color+'22',color:cat.color,fontWeight:700}}>
         {shapeG(cat)} {cat.label}
       </span>}
-      {node?.attrs?.desc && <div style={{fontSize:12,color:'#8892b0',textAlign:'center',maxWidth:180}}>{node.attrs.desc}</div>}
+      {node?.attrs?.desc && <div style={{fontSize:14,color:'#b8bfcc',textAlign:'center',maxWidth:200,lineHeight:1.5}}>{node.attrs.desc}</div>}
     </div>
   )
 
@@ -585,20 +585,20 @@ function PairOverlay({ focus, allNodes, relations, onClear }) {
                     display:'flex', alignItems:'center', justifyContent:'center', gap:10,
                     padding:'0 16px', cursor:'default',
                   }}>
-                    <span style={{color:st.color,fontWeight:700,fontSize:13}}>{st.label}</span>
-                    <span style={{color:'#5a6378',fontSize:12}}>{dir}</span>
-                    <span style={{color:'#ffd166',fontWeight:700,fontSize:15}}>{e.weight?.toFixed(2)}</span>
+                    <span style={{color:st.color,fontWeight:700,fontSize:16}}>{st.label}</span>
+                    <span style={{color:'#8892b0',fontSize:14}}>{dir}</span>
+                    <span style={{color:'#ffd166',fontWeight:700,fontSize:18}}>{e.weight?.toFixed(2)}</span>
                   </div>
                   {/* Evidence below band */}
                   {e.evidence && (
-                    <div style={{fontSize:12,color:'#8892b0',marginTop:4,padding:'4px 12px',lineHeight:1.5}}>
+                    <div style={{fontSize:14,color:'#c4c9d4',marginTop:6,padding:'6px 14px',lineHeight:1.6}}>
                       {e.evidence}
                     </div>
                   )}
                 </div>
               )
             }) : (
-              <div style={{textAlign:'center',color:'#5a6378',fontSize:14,fontStyle:'italic',padding:'20px 0'}}>
+              <div style={{textAlign:'center',color:'#8892b0',fontSize:16,fontStyle:'italic',padding:'20px 0'}}>
                 直接の関係なし
               </div>
             )}
@@ -610,12 +610,12 @@ function PairOverlay({ focus, allNodes, relations, onClear }) {
         {/* Bridges (shared neighbors) */}
         {bridges.length > 0 && (
           <div style={{borderTop:'1px solid #1e2640',paddingTop:12,marginTop:4}}>
-            <div style={{fontSize:12,color:'#5a6378',marginBottom:6}}>経由ノード（両者に接続）:</div>
+            <div style={{fontSize:14,color:'#8892b0',marginBottom:8,fontWeight:600}}>経由ノード（両者に接続）:</div>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
               {bridges.map(id => {
                 const n = allNodes.find(x=>x.id===id)
                 const c = CATEGORY_META[n?.attrs?.category]
-                return <span key={id} style={{padding:'4px 10px',background:'#0b0f1a',borderRadius:8,fontSize:12,display:'inline-flex',alignItems:'center',gap:4}}>
+                return <span key={id} style={{padding:'6px 12px',background:'#0b0f1a',borderRadius:8,fontSize:14,display:'inline-flex',alignItems:'center',gap:4}}>
                   {c && <span style={{color:c.color}}>{shapeG(c)}</span>}
                   {n?.icon} {n?.name}
                 </span>
@@ -632,8 +632,8 @@ function PairOverlay({ focus, allNodes, relations, onClear }) {
         {/* Close */}
         <div style={{textAlign:'center',marginTop:16}}>
           <button onClick={onClear} style={{
-            padding:'8px 24px',borderRadius:10,border:'1px solid #5a6378',
-            background:'transparent',color:'#8892b0',fontSize:13,cursor:'pointer',
+            padding:'10px 28px',borderRadius:10,border:'1px solid #5a6378',
+            background:'transparent',color:'#c4c9d4',fontSize:15,cursor:'pointer',
           }}>✕ 背景に戻る</button>
         </div>
       </div>
