@@ -251,21 +251,21 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
     const tid = typeof l.target==='object'?l.target.id:l.target
     if (phase===2) {
       if (focusSet.has(sid)&&focusSet.has(tid)) return 1.0
-      if (focusSet.has(sid)||focusSet.has(tid)) return 0.15
-      return 0.03
+      if (focusSet.has(sid)||focusSet.has(tid)) return 0.22
+      return 0.10
     }
     if (phase===1) {
       if (focusSet.has(sid)||focusSet.has(tid)) return 0.8
-      return 0.04
+      return 0.12
     }
     if (!hoveredNodeId) return l.status==='refuted'?0.4:0.7
     if (sid===hoveredNodeId||tid===hoveredNodeId) return 0.8
-    return 0.08
+    return 0.18
   }
 
   const getNodeOp = (id) => {
-    if (phase===2) { if(focusSet.has(id)) return 1.0; if(neighborSet?.has(id)) return 0.35; return 0.08 }
-    if (phase===1) { if(focusSet.has(id)) return 1.0; if(neighborSet?.has(id)) return 0.7; return 0.1 }
+    if (phase===2) { if(focusSet.has(id)) return 1.0; if(neighborSet?.has(id)) return 0.45; return 0.18 }
+    if (phase===1) { if(focusSet.has(id)) return 1.0; if(neighborSet?.has(id)) return 0.7; return 0.2 }
     return 1.0
   }
 
@@ -587,6 +587,7 @@ function PairOverlay({ focus, allNodes, relations, onClear }) {
                   }}>
                     <span style={{color:st.color,fontWeight:700,fontSize:16}}>{st.label}</span>
                     <span style={{color:'#8892b0',fontSize:14}}>{dir}</span>
+                    <span style={{fontSize:12,padding:'1px 8px',borderRadius:6,background:e.status==='hypothesis'?'#ef476f22':'#06d6a022',color:e.status==='hypothesis'?'#ef476f':'#06d6a0',fontWeight:600}}>{e.status==='hypothesis'?'🔮 仮説':e.status==='refuted'?'❌ 反証':'✅ 確定'}</span>
                     <span style={{color:'#ffd166',fontWeight:700,fontSize:18}}>{e.weight?.toFixed(2)}</span>
                   </div>
                   {/* Evidence below band */}
