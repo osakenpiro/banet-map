@@ -80,7 +80,7 @@ export default function BanetMap() {
         />
         <Legend phase={phase} />
         {phase === 1 && (
-          <FocusPanel focus={focus} allNodes={data.nodes} relations={data.relations} onClear={clearFocus} />
+          <FocusPanel focus={focus} allNodes={data.nodes} relations={data.relations} onClear={clearFocus} onNodeFocus={handleNodeFocus} />
         )}
         {phase === 2 && (
           <PairOverlay focus={focus} allNodes={data.nodes} relations={data.relations} onClear={clearFocus} />
@@ -380,134 +380,126 @@ function ZoomBtn({label,onClick}) {
   return <button onClick={onClick} style={{width:36,height:36,borderRadius:8,background:'rgba(17,24,39,0.85)',border:'1px solid #1e2640',color:'#e4e8f0',fontSize:16,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(6px)'}}>{label}</button>
 }
 
-function FocusPanel({ focus, allNodes, relations, onClear }) {
-  const phase = focus.length
+function FocusPanel({ focus, allNodes, relations, onClear, onNodeFocus }) {
+  const [kindFilter, setKindFilter] = useState(null) // null = all
+  const [sortBy, setSortBy] = useState('weight') // weight | name | kind
   const nodeA = allNodes.find(n=>n.id===focus[0])
-  const nodeB = phase===2 ? allNodes.find(n=>n.id===focus[1]) : null
-  const colorA = nodeA?.attrs?.color||'#8892b0'
   const catA = CATEGORY_META[nodeA?.attrs?.category]
-  const catB = nodeB ? CATEGORY_META[nodeB?.attrs?.category] : null
-  const shapeG = (cat) => !cat ? '' : cat.shape==='circle'?'●':cat.shape==='square'?'■':cat.shape==='diamond'?'◆':'⬡'
+  const shapeG = (cat) => !cat?'':cat.shape==='circle'?'●':cat.shape==='square'?'■':cat.shape==='diamond'?'◆':'⬡'
 
-  const pairEdges = phase===2 ? relations.filter(r => {
-    const sid=typeof r.source==='object'?r.source.id:r.source
-    const tid=typeof r.target==='object'?r.target.id:r.target
-    return (sid===focus[0]&&tid===focus[1])||(sid===focus[1]&&tid===focus[0])
-  }) : []
-  const connections = phase===1 ? relations.filter(r => {
+  const connections = relations.filter(r => {
     const sid=typeof r.source==='object'?r.source.id:r.source
     const tid=typeof r.target==='object'?r.target.id:r.target
     return sid===focus[0]||tid===focus[0]
-  }).sort((a,b)=>(b.weight||0)-(a.weight||0)) : []
-  const usedKinds = new Set((phase===1 ? connections : pairEdges).map(e=>e.kind))
+  })
+  const usedKinds = [...new Set(connections.map(e=>e.kind))]
 
-  const WBar = ({w, color, width}) => (
-    <div style={{width:width||52,height:6,background:'#1e2640',borderRadius:3,overflow:'hidden',flexShrink:0}}>
-      <div style={{height:'100%',width:`${(w||0)*100}%`,background:color,borderRadius:3}}/>
-    </div>
-  )
-  const ShapeBadge = ({cat}) => cat ? (
-    <span style={{fontSize:12,padding:'2px 8px',borderRadius:8,background:cat.color+'22',color:cat.color,fontWeight:700,display:'inline-flex',alignItems:'center',gap:4}}>
-      <span style={{fontSize:13}}>{shapeG(cat)}</span> {cat.label}
-    </span>
-  ) : null
+  const filtered = kindFilter ? connections.filter(e=>e.kind===kindFilter) : connections
+  const sorted = [...filtered].sort((a,b) => {
+    if (sortBy==='weight') return (b.weight||0)-(a.weight||0)
+    if (sortBy==='name') {
+      const aOther = allNodes.find(n=>n.id===(typeof a.source==='object'?a.source.id:a.source)===focus[0]?(typeof a.target==='object'?a.target.id:a.target):(typeof a.source==='object'?a.source.id:a.source))
+      const bOther = allNodes.find(n=>n.id===(typeof b.source==='object'?b.source.id:b.source)===focus[0]?(typeof b.target==='object'?b.target.id:b.target):(typeof b.source==='object'?b.source.id:b.source))
+      return (aOther?.name||'').localeCompare(bOther?.name||'')
+    }
+    return (a.kind||'').localeCompare(b.kind||'')
+  })
+  const maxW = Math.max(...connections.map(e=>e.weight||0), 0.1)
 
   return (
     <div style={{
-      position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',
-      background:'rgba(17,24,39,0.95)',
-      border:`1px solid ${phase===2?'#ffd166':colorA}`,
-      borderRadius:14,padding:'18px 24px',fontSize:14,color:'#e4e8f0',
-      boxShadow:`0 4px 24px rgba(0,0,0,0.5)${phase===2?', 0 0 20px rgba(255,209,102,0.1)':''}`,
+      position:'absolute',top:0,right:0,bottom:0,width:340,
+      background:'rgba(17,24,39,0.97)',borderLeft:'1px solid #1e2640',
+      display:'flex',flexDirection:'column',zIndex:15,
+      boxShadow:'-4px 0 24px rgba(0,0,0,0.4)',
       backdropFilter:'blur(8px)',
-      maxWidth:phase===2?660:600,width:'max-content',zIndex:15,transition:'all 0.3s',
     }}>
-      <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
-        <span style={{fontSize:phase===2?40:34}}>{nodeA?.icon}</span>
-        <div>
-          <div style={{fontSize:phase===2?20:18,fontWeight:700}}>{nodeA?.name}</div>
-          <div style={{display:'flex',alignItems:'center',gap:8,marginTop:3}}>
-            <ShapeBadge cat={catA}/>
-            {nodeA?.attrs?.desc && <span style={{fontSize:13,color:'#8892b0'}}>{nodeA.attrs.desc}</span>}
-          </div>
-        </div>
-        {phase===2 && <>
-          <div style={{display:'flex',flexDirection:'column',alignItems:'center',margin:'0 6px'}}>
-            <span style={{color:'#ffd166',fontSize:24}}>⇄</span>
-            {pairEdges.length>0 && <span style={{fontSize:11,color:'#ffd166',fontWeight:600}}>{pairEdges.length}本</span>}
-          </div>
-          <span style={{fontSize:40}}>{nodeB?.icon}</span>
-          <div>
-            <div style={{fontSize:20,fontWeight:700}}>{nodeB?.name}</div>
-            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:3}}>
-              <ShapeBadge cat={catB}/>
-              {nodeB?.attrs?.desc && <span style={{fontSize:13,color:'#8892b0'}}>{nodeB.attrs.desc}</span>}
+      {/* Node header */}
+      <div style={{padding:'18px 20px 14px',borderBottom:'1px solid #1e2640'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:36}}>{nodeA?.icon}</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:20,fontWeight:700,color:'#e4e8f0'}}>{nodeA?.name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3}}>
+              {catA && <span style={{fontSize:13,padding:'2px 8px',borderRadius:8,background:catA.color+'22',color:catA.color,fontWeight:700,display:'inline-flex',alignItems:'center',gap:4}}>
+                <span>{shapeG(catA)}</span> {catA.label}
+              </span>}
             </div>
           </div>
-        </>}
-        <button onClick={onClear} style={{marginLeft:'auto',background:'transparent',border:'1px solid #5a6378',color:'#8892b0',fontSize:13,padding:'6px 14px',borderRadius:8,cursor:'pointer',whiteSpace:'nowrap'}}>✕ 解除</button>
+          <button onClick={onClear} style={{background:'transparent',border:'1px solid #5a6378',color:'#8892b0',fontSize:14,padding:'6px 12px',borderRadius:8,cursor:'pointer'}}>✕</button>
+        </div>
+        {nodeA?.attrs?.desc && <div style={{fontSize:13,color:'#b8bfcc',marginTop:8,lineHeight:1.5}}>{nodeA.attrs.desc}</div>}
       </div>
 
-      {usedKinds.size > 0 && (
-        <div style={{display:'flex',gap:10,marginBottom:10,padding:'6px 10px',background:'#0d1117',borderRadius:8,flexWrap:'wrap'}}>
-          <span style={{fontSize:13,color:'#5a6378',alignSelf:'center'}}>線の意味:</span>
-          {[...usedKinds].map(k => {
-            const st = KIND_STYLE[k]||{label:k,color:'#8892b0'}
-            return <span key={k} style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:12}}>
-              <span style={{display:'inline-block',width:18,height:3,background:st.color,borderRadius:2}}/>
-              <span style={{color:st.color,fontWeight:600}}>{st.label}</span>
-            </span>
+      {/* Kind filter + sort */}
+      <div style={{padding:'10px 20px',borderBottom:'1px solid #1e2640',display:'flex',flexDirection:'column',gap:8}}>
+        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+          <button onClick={()=>setKindFilter(null)} style={{
+            padding:'3px 10px',fontSize:11,fontWeight:600,borderRadius:10,cursor:'pointer',border:'none',
+            background:kindFilter===null?'#e4e8f0':'#1e2640',color:kindFilter===null?'#0b0f1a':'#5a6378',
+          }}>すべて ({connections.length})</button>
+          {usedKinds.map(k => {
+            const st=KIND_STYLE[k]||{label:k,color:'#8892b0'}
+            const cnt=connections.filter(e=>e.kind===k).length
+            return <button key={k} onClick={()=>setKindFilter(kindFilter===k?null:k)} style={{
+              padding:'3px 10px',fontSize:11,fontWeight:600,borderRadius:10,cursor:'pointer',border:'none',
+              background:kindFilter===k?st.color:'#1e2640',color:kindFilter===k?'#0b0f1a':'#5a6378',
+            }}>{st.label} ({cnt})</button>
           })}
         </div>
-      )}
+        <div style={{display:'flex',gap:6,fontSize:11,color:'#5a6378'}}>
+          <span>並替:</span>
+          {[['weight','重さ順'],['name','名前順'],['kind','種類順']].map(([v,l])=>
+            <button key={v} onClick={()=>setSortBy(v)} style={{
+              padding:'2px 8px',fontSize:10,borderRadius:6,cursor:'pointer',border:'none',
+              background:sortBy===v?'#2a3050':'transparent',color:sortBy===v?'#e4e8f0':'#5a6378',
+            }}>{l}</button>
+          )}
+        </div>
+      </div>
 
-      {phase===1 && connections.length>0 && (
-        <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
-          {connections.map(e => {
-            const sid=typeof e.source==='object'?e.source.id:e.source
-            const tid=typeof e.target==='object'?e.target.id:e.target
-            const otherId=sid===focus[0]?tid:sid
-            const other=allNodes.find(n=>n.id===otherId)
-            const otherCat=CATEGORY_META[other?.attrs?.category]
-            const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
-            const dir=sid===focus[0]?'→':'←'
-            return <div key={e.id} style={{padding:'6px 12px',background:'#0b0f1a',borderRadius:8,borderLeft:`3px solid ${st.color}`,fontSize:13,display:'flex',alignItems:'center',gap:7}}>
-              <span style={{color:st.color,fontWeight:700}}>{st.label}</span>
-              <span style={{color:'#5a6378'}}>{dir}</span>
-              {otherCat && <span style={{color:otherCat.color,fontSize:12}}>{shapeG(otherCat)}</span>}
-              <span style={{fontWeight:600}}>{other?.icon} {other?.name}</span>
-              <WBar w={e.weight} color={st.color}/>
-              <span style={{color:'#ffd166',fontWeight:600,fontSize:12}}>{e.weight?.toFixed(2)}</span>
+      {/* Connection list */}
+      <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
+        {sorted.map(e => {
+          const sid=typeof e.source==='object'?e.source.id:e.source
+          const tid=typeof e.target==='object'?e.target.id:e.target
+          const otherId=sid===focus[0]?tid:sid
+          const other=allNodes.find(n=>n.id===otherId)
+          const otherCat=CATEGORY_META[other?.attrs?.category]
+          const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
+          const dir=sid===focus[0]?'→':'←'
+          const barW = ((e.weight||0)/maxW)*100
+          const statusEmoji = e.status==='hypothesis'?'🔮':e.status==='refuted'?'❌':''
+          return <div key={e.id} onClick={()=>onNodeFocus&&onNodeFocus(otherId)}
+            style={{padding:'10px 20px',cursor:'pointer',borderBottom:'1px solid #111827',
+              transition:'background 0.15s',
+            }}
+            onMouseEnter={ev=>ev.currentTarget.style.background='#1a1f35'}
+            onMouseLeave={ev=>ev.currentTarget.style.background='transparent'}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+              <span style={{width:4,height:20,borderRadius:2,background:st.color,flexShrink:0}}/>
+              <span style={{color:st.color,fontWeight:700,fontSize:12}}>{st.label}</span>
+              <span style={{color:'#5a6378',fontSize:12}}>{dir}</span>
+              {otherCat && <span style={{color:otherCat.color,fontSize:11}}>{shapeG(otherCat)}</span>}
+              <span style={{fontWeight:600,fontSize:14,color:'#e4e8f0'}}>{other?.icon} {other?.name}</span>
+              {statusEmoji && <span style={{fontSize:11}}>{statusEmoji}</span>}
             </div>
-          })}
-        </div>
-      )}
-      {phase===1 && connections.length===0 && <div style={{color:'#5a6378',fontSize:13,fontStyle:'italic'}}>接続なし</div>}
-
-      {phase===2 && pairEdges.length>0 && (
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {pairEdges.map(e => {
-            const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
-            const srcId=typeof e.source==='object'?e.source.id:e.source
-            const dir=srcId===focus[0]?'→':'←'
-            return <div key={e.id} style={{padding:'12px 16px',background:'#0b0f1a',borderRadius:10,borderLeft:`4px solid ${st.color}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:e.evidence?8:0}}>
-                <span style={{color:st.color,fontWeight:700,fontSize:15}}>{st.label}</span>
-                <span style={{color:'#5a6378',fontSize:14}}>{dir}</span>
-                <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:10}}>
-                  <WBar w={e.weight} color={st.color} width={64}/>
-                  <span style={{color:'#ffd166',fontWeight:700,fontSize:16}}>{e.weight?.toFixed(2)}</span>
-                </div>
+            {/* Weight bar */}
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{flex:1,height:8,background:'#111827',borderRadius:4,overflow:'hidden'}}>
+                <div style={{height:'100%',width:barW+'%',background:st.color,borderRadius:4,transition:'width 0.3s'}}/>
               </div>
-              {e.evidence && <div style={{fontSize:13,color:'#c4c9d4',lineHeight:1.6,padding:'8px 10px',background:'#111827',borderRadius:6}}>{e.evidence}</div>}
+              <span style={{color:'#ffd166',fontWeight:700,fontSize:14,minWidth:36,textAlign:'right'}}>{e.weight?.toFixed(2)}</span>
             </div>
-          })}
-        </div>
-      )}
-      {phase===2 && pairEdges.length===0 && <div style={{color:'#5a6378',fontSize:13,fontStyle:'italic',padding:'4px 0'}}>直接の関係なし — 経由ノードは半透明で表示中</div>}
+            {e.evidence && <div style={{fontSize:11,color:'#8892b0',marginTop:4,paddingLeft:12}}>{e.evidence}</div>}
+          </div>
+        })}
+        {sorted.length===0 && <div style={{padding:20,color:'#5a6378',textAlign:'center',fontSize:13}}>接続なし</div>}
+      </div>
 
-      <div style={{marginTop:10,fontSize:11,color:'#5a6378'}}>
-        {phase===1?'別のノードをクリック → 関係確認':'背景クリック or ✕ で解除'}
+      {/* Footer hint */}
+      <div style={{padding:'10px 20px',borderTop:'1px solid #1e2640',fontSize:11,color:'#5a6378'}}>
+        行をクリック → 関係確認モード
       </div>
     </div>
   )
