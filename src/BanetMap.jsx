@@ -42,6 +42,7 @@ export default function BanetMap() {
   const [catFilter, setCatFilter] = useState(() => {
     const f = {}; for (const k of Object.keys(CATEGORY_META)) f[k] = true; return f
   })
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     fetch(import.meta.env.BASE_URL + 'data/visionium.json')
@@ -50,6 +51,19 @@ export default function BanetMap() {
   }, [])
 
   const toggleCat = useCallback((cat) => setCatFilter(prev => ({ ...prev, [cat]: !prev[cat] })), [])
+
+  // VR共通: ノード全文検索 → Set<nodeId>
+  const searchMatchIds = useMemo(() => {
+    if (!data || !searchQuery.trim()) return null // null = no filter
+    const q = searchQuery.trim().toLowerCase()
+    const ids = new Set()
+    data.nodes.forEach(n => {
+      const haystack = [n.name, n.id, n.icon, n.attrs?.desc, n.attrs?.category,
+        ...Object.values(n.attrs || {}).map(String)].join(' ').toLowerCase()
+      if (haystack.includes(q)) ids.add(n.id)
+    })
+    return ids
+  }, [data, searchQuery])
 
   const handleNodeFocus = useCallback((id) => {
     setFocus(prev => {
@@ -69,7 +83,9 @@ export default function BanetMap() {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Header meta={data.meta} showHypothesis={showHypothesis} onToggleHypothesis={setShowHypothesis}
-        catFilter={catFilter} onToggleCat={toggleCat} phase={phase} onClearFocus={clearFocus} />
+        catFilter={catFilter} onToggleCat={toggleCat} phase={phase} onClearFocus={clearFocus}
+        searchQuery={searchQuery} onSearch={setSearchQuery} searchMatchIds={searchMatchIds}
+        totalNodes={data.nodes.length} />
       <main style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <Graph
           nodes={data.nodes} relations={data.relations}
@@ -77,6 +93,7 @@ export default function BanetMap() {
           focus={focus} onNodeFocus={handleNodeFocus} onClearFocus={clearFocus}
           onHoverNode={setHoveredNode} hoveredNodeId={hoveredNode?.id}
           onHoverEdge={setHoveredEdge}
+          searchMatchIds={searchMatchIds}
         />
         <Legend phase={phase} />
         {phase === 1 && (
@@ -91,7 +108,7 @@ export default function BanetMap() {
   )
 }
 
-function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleCat, phase, onClearFocus }) {
+function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleCat, phase, onClearFocus, searchQuery, onSearch, searchMatchIds, totalNodes }) {
   return (
     <header style={{
       padding: '10px 20px', borderBottom: '1px solid #1e2640',
@@ -99,8 +116,25 @@ function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleC
       background: '#0b0f1a', zIndex: 5,
     }}>
       <div style={{ fontSize: 20, fontWeight: 700, whiteSpace: 'nowrap' }}>🌀 バネットマップ</div>
-      <div style={{ fontSize: 13, color: '#8892b0' }}>{meta?.title}</div>
-      <div style={{ display: 'flex', gap: 6, marginLeft: 12 }}>
+      {/* Search */}
+      <div style={{ position:'relative', minWidth:180 }}>
+        <input value={searchQuery} onChange={e=>onSearch(e.target.value)}
+          placeholder="🔍 ノード検索…"
+          style={{
+            width:'100%',padding:'6px 28px 6px 10px',fontSize:13,
+            background:'#111827',border:`1px solid ${searchMatchIds?'#ffd166':'#1e2640'}`,borderRadius:8,
+            color:'#e4e8f0',outline:'none',transition:'border-color 0.2s',
+          }}
+        />
+        {searchQuery && <button onClick={()=>onSearch('')} style={{
+          position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',
+          background:'none',border:'none',color:'#5a6378',fontSize:12,cursor:'pointer',padding:2
+        }}>✕</button>}
+      </div>
+      {searchMatchIds && (
+        <span style={{fontSize:12,color:'#ffd166',fontWeight:600}}>{searchMatchIds.size}/{totalNodes}</span>
+      )}
+      <div style={{ display: 'flex', gap: 6 }}>
         {Object.entries(CATEGORY_META).map(([k, v]) => (
           <button key={k} onClick={() => onToggleCat(k)} style={{
             padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 12,
@@ -130,7 +164,7 @@ function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleC
   )
 }
 
-function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus, onClearFocus, onHoverNode, hoveredNodeId, onHoverEdge }) {
+function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus, onClearFocus, onHoverNode, hoveredNodeId, onHoverEdge, searchMatchIds }) {
   const svgRef = useRef(null), wrapRef = useRef(null), simRef = useRef(null), zoomRef = useRef(null)
 
   const degreeMap = useMemo(() => {
@@ -245,10 +279,13 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
 
   const phase = focus.length
   const focusSet = new Set(focus)
+  const searchActive = searchMatchIds !== null
 
   const getEdgeOp = (l) => {
     const sid = typeof l.source==='object'?l.source.id:l.source
     const tid = typeof l.target==='object'?l.target.id:l.target
+    // Search dimming layer
+    if (searchActive && !searchMatchIds.has(sid) && !searchMatchIds.has(tid)) return 0.05
     if (phase===2) {
       if (focusSet.has(sid)&&focusSet.has(tid)) return 1.0
       if (focusSet.has(sid)||focusSet.has(tid)) return 0.22
@@ -264,6 +301,7 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
   }
 
   const getNodeOp = (id) => {
+    if (searchActive && !searchMatchIds.has(id)) return 0.08
     if (phase===2) { if(focusSet.has(id)) return 1.0; if(neighborSet?.has(id)) return 0.45; return 0.18 }
     if (phase===1) { if(focusSet.has(id)) return 1.0; if(neighborSet?.has(id)) return 0.7; return 0.2 }
     return 1.0
