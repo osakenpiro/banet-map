@@ -21,8 +21,8 @@ A VR v0.1 Level-1 viewer by [osakenpiro](https://github.com/osakenpiro).
 
 ## VR v0.1 準拠
 
-このアプリは [VR (Visualize Rule) v0.1](./docs/VR-v0.1.md) Level-1 viewer です。
-同じ [VR データプロトコル](./docs/VR-v0.1.md#2-l0-data-protocol-v01-minimum-viable) を読む他のアプリ:
+このアプリは [VR (Visualize Rule) v0.1](./spec/VR-v0.1.md) Level-1 viewer です。
+同じ [VR データプロトコル](./spec/VR-v0.1.md#2-l0-data-protocol-v01-minimum-viable) を読む他のアプリ:
 
 - 🪐 [わっかずかん](https://osakenpiro.github.io/wakkazukan/) — 分類ビューア (classification viewer)
 - 🌀 バネットマップ (本アプリ) — 関係ビューア (relation viewer)
@@ -41,4 +41,4 @@ MIT (予定)
 ## 関連
 
 - [osakenpiro/wakkazukan](https://github.com/osakenpiro/wakkazukan) — 姉妹アプリ
-- [VR v0.1 仕様](./docs/VR-v0.1.md)
+- [VR v0.1 仕様](./spec/VR-v0.1.md)
