@@ -202,7 +202,7 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
     } else {
       const xs = targets.map(t=>t.x), ys = targets.map(t=>t.y)
       const cx = (Math.min(...xs)+Math.max(...xs))/2, cy = (Math.min(...ys)+Math.max(...ys))/2
-      const k = Math.min(w/(Math.abs(xs[0]-xs[1])+200), h/(Math.abs(ys[0]-ys[1])+200), 2.5)
+      const k = Math.min(w/(Math.abs(xs[0]-xs[1])+160), h/(Math.abs(ys[0]-ys[1])+160), 2.8)
       select(svgRef.current).transition().duration(500)
         .call(zoomRef.current.transform, zoomIdentity.translate(w/2-cx*k, h/2-cy*k).scale(k))
     }
@@ -300,7 +300,7 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
             const siblings=edgePairMap[pairKey]||[l.id], idx=siblings.indexOf(l.id), total=siblings.length
             const offset=total<=1?0:(idx-(total-1)/2)*22, nx=-dy/len, ny=dx/len
             const isFP = phase===2&&focusSet.has(l.source.id)&&focusSet.has(l.target.id)
-            const sw = (1+(l.weight||0.5)*3)*(isFP?2.5:1)
+            const sw = (1+(l.weight||0.5)*3)*(isFP?3.5:1)
             const dash = dashed?'6 5':refuted?'2 4':undefined
             const me = refuted?undefined:`url(#arrow-${l.kind})`
 
@@ -313,6 +313,7 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
                 onPointerEnter={e=>onHoverEdge({edge:l,x:e.clientX,y:e.clientY})}
                 onPointerMove={e=>onHoverEdge({edge:l,x:e.clientX,y:e.clientY})}
                 onPointerLeave={()=>onHoverEdge(null)}>
+                {isFP && <path d={pathD} fill="none" stroke={stroke} strokeWidth={sw*2.5} strokeOpacity={0.15} style={{filter:'blur(6px)'}}/>}
                 <path d={pathD} fill="none" stroke={stroke} strokeWidth={sw} strokeOpacity={opacity} strokeDasharray={dash} markerEnd={me}/>
                 <path d={pathD} fill="none" stroke="transparent" strokeWidth="14"/>
               </g>
@@ -322,6 +323,7 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
               onPointerEnter={e=>onHoverEdge({edge:l,x:e.clientX,y:e.clientY})}
               onPointerMove={e=>onHoverEdge({edge:l,x:e.clientX,y:e.clientY})}
               onPointerLeave={()=>onHoverEdge(null)}>
+              {isFP && <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={stroke} strokeWidth={sw*2.5} strokeOpacity={0.15} style={{filter:'blur(6px)'}}/>}
               <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={stroke} strokeWidth={sw} strokeOpacity={opacity} strokeDasharray={dash} markerEnd={me}/>
               <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="transparent" strokeWidth="14"/>
             </g>
@@ -329,8 +331,10 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
 
           <g>{simNodes.map(d => {
             if (!nodeVisible(d)) return null
-            const r=d._r, color=d.attrs?.color||'#8892b0'
-            const isH=hoveredNodeId===d.id, isF=focusSet.has(d.id)
+            const isF=focusSet.has(d.id)
+            const r = isF && phase > 0 ? d._r * 1.4 : d._r
+            const color=d.attrs?.color||'#8892b0'
+            const isH=hoveredNodeId===d.id
             const shape=CATEGORY_META[d.attrs?.category]?.shape||'circle'
             const deg=degreeMap[d.id]||0, op=getNodeOp(d.id)
             const glowR = isF&&phase>0 ? r+10 : deg>=6 ? r+6 : 0
@@ -378,6 +382,8 @@ function FocusPanel({ focus, allNodes, relations, onClear }) {
   const nodeA = allNodes.find(n=>n.id===focus[0])
   const nodeB = phase===2 ? allNodes.find(n=>n.id===focus[1]) : null
   const colorA = nodeA?.attrs?.color||'#8892b0'
+  const catA = CATEGORY_META[nodeA?.attrs?.category]
+  const catB = nodeB ? CATEGORY_META[nodeB?.attrs?.category] : null
 
   const pairEdges = phase===2 ? relations.filter(r => {
     const sid=typeof r.source==='object'?r.source.id:r.source
@@ -389,36 +395,54 @@ function FocusPanel({ focus, allNodes, relations, onClear }) {
     const sid=typeof r.source==='object'?r.source.id:r.source
     const tid=typeof r.target==='object'?r.target.id:r.target
     return sid===focus[0]||tid===focus[0]
-  }) : []
+  }).sort((a,b)=>(b.weight||0)-(a.weight||0)) : []
+
+  const WBar = ({w, color}) => (
+    <div style={{width:48,height:5,background:'#1e2640',borderRadius:3,overflow:'hidden',flexShrink:0}}>
+      <div style={{height:'100%',width:`${(w||0)*100}%`,background:color,borderRadius:3}}/>
+    </div>
+  )
 
   return (
     <div style={{
       position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',
       background:'rgba(17,24,39,0.95)',
       border:`1px solid ${phase===2?'#ffd166':colorA}`,
-      borderRadius:14,padding:'14px 20px',fontSize:13,color:'#e4e8f0',
-      boxShadow:'0 4px 24px rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',
-      maxWidth:560,width:'max-content',zIndex:15,transition:'all 0.3s',
+      borderRadius:14,padding:'16px 22px',fontSize:13,color:'#e4e8f0',
+      boxShadow:`0 4px 24px rgba(0,0,0,0.5)${phase===2?', 0 0 20px rgba(255,209,102,0.1)':''}`,
+      backdropFilter:'blur(8px)',
+      maxWidth:phase===2?620:560,width:'max-content',zIndex:15,transition:'all 0.3s',
     }}>
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-        <span style={{fontSize:28}}>{nodeA?.icon}</span>
+      {/* Header: node(s) */}
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+        <span style={{fontSize:phase===2?36:28}}>{nodeA?.icon}</span>
         <div>
-          <div style={{fontSize:16,fontWeight:700}}>{nodeA?.name}</div>
-          {nodeA?.attrs?.desc && <div style={{fontSize:11,color:'#8892b0',maxWidth:300}}>{nodeA.attrs.desc}</div>}
+          <div style={{fontSize:phase===2?18:16,fontWeight:700}}>{nodeA?.name}</div>
+          <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+            {catA && <span style={{fontSize:10,padding:'1px 6px',borderRadius:8,background:catA.color+'22',color:catA.color,fontWeight:600}}>{catA.label}</span>}
+            {nodeA?.attrs?.desc && <span style={{fontSize:11,color:'#8892b0'}}>{nodeA.attrs.desc}</span>}
+          </div>
         </div>
         {phase===2 && <>
-          <span style={{color:'#ffd166',fontSize:20,margin:'0 4px'}}>⇄</span>
-          <span style={{fontSize:28}}>{nodeB?.icon}</span>
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',margin:'0 4px'}}>
+            <span style={{color:'#ffd166',fontSize:22}}>⇄</span>
+            {pairEdges.length>0 && <span style={{fontSize:9,color:'#ffd166'}}>{pairEdges.length}本</span>}
+          </div>
+          <span style={{fontSize:36}}>{nodeB?.icon}</span>
           <div>
-            <div style={{fontSize:16,fontWeight:700}}>{nodeB?.name}</div>
-            {nodeB?.attrs?.desc && <div style={{fontSize:11,color:'#8892b0',maxWidth:200}}>{nodeB.attrs.desc}</div>}
+            <div style={{fontSize:18,fontWeight:700}}>{nodeB?.name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+              {catB && <span style={{fontSize:10,padding:'1px 6px',borderRadius:8,background:catB.color+'22',color:catB.color,fontWeight:600}}>{catB.label}</span>}
+              {nodeB?.attrs?.desc && <span style={{fontSize:11,color:'#8892b0'}}>{nodeB.attrs.desc}</span>}
+            </div>
           </div>
         </>}
-        <button onClick={onClear} style={{marginLeft:'auto',background:'transparent',border:'1px solid #5a6378',color:'#8892b0',fontSize:11,padding:'4px 10px',borderRadius:6,cursor:'pointer'}}>✕</button>
+        <button onClick={onClear} style={{marginLeft:'auto',background:'transparent',border:'1px solid #5a6378',color:'#8892b0',fontSize:12,padding:'5px 12px',borderRadius:8,cursor:'pointer',whiteSpace:'nowrap'}}>✕ 解除</button>
       </div>
 
+      {/* Phase 1: connections with weight bars */}
       {phase===1 && connections.length>0 && (
-        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:4}}>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
           {connections.map(e => {
             const sid=typeof e.source==='object'?e.source.id:e.source
             const tid=typeof e.target==='object'?e.target.id:e.target
@@ -426,38 +450,42 @@ function FocusPanel({ focus, allNodes, relations, onClear }) {
             const other=allNodes.find(n=>n.id===otherId)
             const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
             const dir=sid===focus[0]?'→':'←'
-            return <div key={e.id} style={{padding:'4px 10px',background:'#0b0f1a',borderRadius:8,borderLeft:`3px solid ${st.color}`,fontSize:11,display:'flex',alignItems:'center',gap:6}}>
+            return <div key={e.id} style={{padding:'5px 10px',background:'#0b0f1a',borderRadius:8,borderLeft:`3px solid ${st.color}`,fontSize:11,display:'flex',alignItems:'center',gap:6}}>
               <span style={{color:st.color,fontWeight:600}}>{st.label}</span>
               <span style={{color:'#5a6378'}}>{dir}</span>
               <span>{other?.icon} {other?.name}</span>
-              <span style={{color:'#ffd166',fontWeight:600}}>w={e.weight?.toFixed(1)}</span>
+              <WBar w={e.weight} color={st.color}/>
             </div>
           })}
         </div>
       )}
       {phase===1 && connections.length===0 && <div style={{color:'#5a6378',fontSize:12,fontStyle:'italic'}}>接続なし</div>}
 
+      {/* Phase 2: pair edge details (large) */}
       {phase===2 && pairEdges.length>0 && (
-        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {pairEdges.map(e => {
             const st=KIND_STYLE[e.kind]||{label:e.kind,color:'#8892b0'}
             const srcId=typeof e.source==='object'?e.source.id:e.source
             const dir=srcId===focus[0]?'→':'←'
-            return <div key={e.id} style={{padding:'8px 12px',background:'#0b0f1a',borderRadius:8,borderLeft:`3px solid ${st.color}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:e.evidence?4:0}}>
-                <span style={{color:st.color,fontWeight:700,fontSize:12}}>{st.label}</span>
-                <span style={{color:'#5a6378',fontSize:11}}>{dir}</span>
-                <span style={{marginLeft:'auto',color:'#ffd166',fontWeight:600}}>w={e.weight?.toFixed(2)}</span>
+            return <div key={e.id} style={{padding:'10px 14px',background:'#0b0f1a',borderRadius:10,borderLeft:`4px solid ${st.color}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+                <span style={{color:st.color,fontWeight:700,fontSize:13}}>{st.label}</span>
+                <span style={{color:'#5a6378',fontSize:12}}>{dir}</span>
+                <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
+                  <WBar w={e.weight} color={st.color}/>
+                  <span style={{color:'#ffd166',fontWeight:700,fontSize:14}}>{e.weight?.toFixed(2)}</span>
+                </div>
               </div>
-              {e.evidence && <div style={{fontSize:11,color:'#8892b0'}}>{e.evidence}</div>}
+              {e.evidence && <div style={{fontSize:12,color:'#c4c9d4',lineHeight:1.5,padding:'6px 8px',background:'#111827',borderRadius:6}}>{e.evidence}</div>}
             </div>
           })}
         </div>
       )}
-      {phase===2 && pairEdges.length===0 && <div style={{color:'#5a6378',fontSize:12,fontStyle:'italic'}}>直接の関係なし（経由ノードは半透明で表示中）</div>}
+      {phase===2 && pairEdges.length===0 && <div style={{color:'#5a6378',fontSize:12,fontStyle:'italic',padding:'4px 0'}}>直接の関係なし — 経由ノードは半透明で表示中</div>}
 
       <div style={{marginTop:8,fontSize:10,color:'#5a6378'}}>
-        {phase===1?'別のノードをクリック → 関係確認モード':'背景クリック or ✕ で解除'}
+        {phase===1?'別のノードをクリック → 関係確認':'背景クリック or ✕ で解除'}
       </div>
     </div>
   )
