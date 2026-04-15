@@ -20,6 +20,105 @@ const CATEGORY_META = {
 }
 const R_MIN = 14, R_SCALE = 3.2
 
+/* ── VR CSV Standard v0.1 ── */
+function csvStringify(rows) {
+  if (!rows.length) return ''
+  const cols = Object.keys(rows[0])
+  const escape = v => {
+    const s = v == null ? '' : String(v)
+    return s.includes(',') || s.includes('"') || s.includes('\n')
+      ? '"' + s.replace(/"/g, '""') + '"' : s
+  }
+  return [cols.map(escape).join(','), ...rows.map(r => cols.map(c => escape(r[c])).join(','))].join('\n')
+}
+
+function csvParse(text) {
+  const lines = []; let cur = ''; let inQ = false
+  for (const ch of text) {
+    if (ch === '"') { inQ = !inQ; cur += ch }
+    else if (ch === '\n' && !inQ) { lines.push(cur); cur = '' }
+    else { cur += ch }
+  }
+  if (cur.trim()) lines.push(cur)
+  const parseRow = (line) => {
+    const cells = []; let cell = ''; let q = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (ch === '"') { if (q && line[i+1] === '"') { cell += '"'; i++ } else { q = !q } }
+      else if (ch === ',' && !q) { cells.push(cell); cell = '' }
+      else { cell += ch }
+    }
+    cells.push(cell)
+    return cells
+  }
+  if (!lines.length) return []
+  const header = parseRow(lines[0])
+  return lines.slice(1).filter(l => l.trim()).map(l => {
+    const vals = parseRow(l)
+    const obj = {}
+    header.forEach((h, i) => { obj[h.trim()] = (vals[i] ?? '').trim() })
+    return obj
+  })
+}
+
+function jsonToCSVs(data) {
+  const nodeRows = data.nodes.map(n => ({
+    id: n.id, name: n.name, icon: n.icon || '',
+    desc: n.attrs?.desc || '',
+    'axis:category': n.attrs?.category || '',
+    color: n.attrs?.color || '',
+    radius: n.attrs?.radius ?? '',
+  }))
+  const relRows = data.relations.map(r => ({
+    id: r.id,
+    source: typeof r.source === 'object' ? r.source.id : r.source,
+    target: typeof r.target === 'object' ? r.target.id : r.target,
+    kind: r.kind, weight: r.weight ?? '',
+    status: r.status || 'confirmed',
+    evidence: r.evidence || '',
+  }))
+  return { nodes: csvStringify(nodeRows), relations: csvStringify(relRows) }
+}
+
+function csvsToJson(nodesCsv, relationsCsv, meta) {
+  const nodeRows = csvParse(nodesCsv)
+  const relRows = csvParse(relationsCsv)
+  const nodes = nodeRows.map(r => {
+    const axes = {}; const attrs = {}
+    Object.entries(r).forEach(([k, v]) => {
+      if (k.startsWith('axis:')) axes[k.slice(5)] = v
+    })
+    if (axes.category) attrs.category = axes.category
+    if (r.color) attrs.color = r.color
+    if (r.radius) attrs.radius = Number(r.radius)
+    if (r.desc) attrs.desc = r.desc
+    // If no color, derive from CATEGORY_META
+    if (!attrs.color && attrs.category && CATEGORY_META[attrs.category]) {
+      attrs.color = CATEGORY_META[attrs.category].color
+    }
+    return { id: r.id, name: r.name, icon: r.icon || '', attrs }
+  })
+  const relations = relRows.map(r => ({
+    id: r.id, source: r.source, target: r.target,
+    kind: r.kind, weight: r.weight ? Number(r.weight) : 0.5,
+    status: r.status || 'confirmed',
+    ...(r.evidence ? { evidence: r.evidence } : {}),
+  }))
+  return {
+    meta: meta || { id: 'imported', title: 'Imported Data', version: '0.1', source: 'csv-import' },
+    nodes, relations,
+    axes: [{ id: 'by-category', title: 'カテゴリで分ける', groupBy: 'attrs.category' }],
+  }
+}
+
+function downloadFile(content, filename) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 function NodeShape({ shape, r, fill, stroke, strokeWidth }) {
   switch (shape) {
     case 'square': { const s = r * 1.6; return <rect x={-s/2} y={-s/2} width={s} height={s} rx={3} fill={fill} stroke={stroke} strokeWidth={strokeWidth} /> }
@@ -43,12 +142,32 @@ export default function BanetMap() {
     const f = {}; for (const k of Object.keys(CATEGORY_META)) f[k] = true; return f
   })
   const [searchQuery, setSearchQuery] = useState('')
+  const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
     fetch(import.meta.env.BASE_URL + 'data/visionium.json')
       .then(r => { if (!r.ok) throw new Error('failed: ' + r.status); return r.json() })
       .then(setData).catch(e => setError(e.message))
   }, [])
+
+  const handleExport = useCallback(() => {
+    if (!data) return
+    const { nodes, relations } = jsonToCSVs(data)
+    const prefix = (data.meta?.id || 'banet').replace(/\s+/g, '-')
+    downloadFile(nodes, `${prefix}-nodes.csv`)
+    setTimeout(() => downloadFile(relations, `${prefix}-relations.csv`), 200)
+  }, [data])
+
+  const handleImport = useCallback((nodesCsv, relationsCsv) => {
+    try {
+      const imported = csvsToJson(nodesCsv, relationsCsv, data?.meta)
+      if (!imported.nodes.length) { setError('nodes.csv にノードがありません'); return }
+      setData(imported)
+      setFocus([])
+      setSearchQuery('')
+      setShowImport(false)
+    } catch (e) { setError('CSV読込エラー: ' + e.message) }
+  }, [data])
 
   const toggleCat = useCallback((cat) => setCatFilter(prev => ({ ...prev, [cat]: !prev[cat] })), [])
 
@@ -85,7 +204,8 @@ export default function BanetMap() {
       <Header meta={data.meta} showHypothesis={showHypothesis} onToggleHypothesis={setShowHypothesis}
         catFilter={catFilter} onToggleCat={toggleCat} phase={phase} onClearFocus={clearFocus}
         searchQuery={searchQuery} onSearch={setSearchQuery} searchMatchIds={searchMatchIds}
-        totalNodes={data.nodes.length} />
+        totalNodes={data.nodes.length}
+        onExport={handleExport} onImport={() => setShowImport(true)} />
       <main style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <Graph
           nodes={data.nodes} relations={data.relations}
@@ -103,12 +223,13 @@ export default function BanetMap() {
           <PairOverlay focus={focus} allNodes={data.nodes} relations={data.relations} onClear={clearFocus} />
         )}
         {hoveredEdge && phase === 0 && <EdgeTooltip data={hoveredEdge} allNodes={data.nodes} />}
+        {showImport && <ImportModal onImport={handleImport} onClose={() => setShowImport(false)} />}
       </main>
     </div>
   )
 }
 
-function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleCat, phase, onClearFocus, searchQuery, onSearch, searchMatchIds, totalNodes }) {
+function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleCat, phase, onClearFocus, searchQuery, onSearch, searchMatchIds, totalNodes, onExport, onImport }) {
   return (
     <header style={{
       padding: '10px 20px', borderBottom: '1px solid #1e2640',
@@ -152,6 +273,15 @@ function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleC
         }}>✕ 解除</button>
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* CSV import/export */}
+        <button onClick={onImport} title="CSV インポート" style={{
+          padding:'4px 10px',fontSize:12,fontWeight:600,borderRadius:8,cursor:'pointer',
+          border:'1px solid #06d6a0',background:'transparent',color:'#06d6a0',
+        }}>📥 CSV</button>
+        <button onClick={onExport} title="CSV エクスポート" style={{
+          padding:'4px 10px',fontSize:12,fontWeight:600,borderRadius:8,cursor:'pointer',
+          border:'1px solid #118ab2',background:'transparent',color:'#118ab2',
+        }}>📤 CSV</button>
         <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: showHypothesis ? '#e4e8f0' : '#5a6378' }}>
           <input type="checkbox" checked={showHypothesis} onChange={(e) => onToggleHypothesis(e.target.checked)} style={{ accentColor: '#ef476f' }} />
           仮説
@@ -687,6 +817,149 @@ function EdgeTooltip({ data, allNodes }) {
     <div style={{color:'#ffd166',fontWeight:600}}>weight: {edge.weight?.toFixed(2)}</div>
     {edge.evidence && <div style={{marginTop:4,fontSize:11,color:'#8892b0',fontStyle:'italic'}}>{edge.evidence}</div>}
   </div>
+}
+
+/* ── ImportModal — CSV import UI ── */
+function ImportModal({ onImport, onClose }) {
+  const [nodesFile, setNodesFile] = useState(null)
+  const [relsFile, setRelsFile] = useState(null)
+  const [nodesText, setNodesText] = useState('')
+  const [relsText, setRelsText] = useState('')
+  const [preview, setPreview] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  const readFile = (file) => new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.readAsText(file, 'utf-8')
+  })
+
+  const handleFiles = async (files) => {
+    for (const f of files) {
+      const text = await readFile(f)
+      const name = f.name.toLowerCase()
+      if (name.includes('node')) { setNodesFile(f.name); setNodesText(text) }
+      else if (name.includes('relation') || name.includes('edge') || name.includes('rel')) { setRelsFile(f.name); setRelsText(text) }
+      else if (!nodesText) { setNodesFile(f.name); setNodesText(text) }
+      else { setRelsFile(f.name); setRelsText(text) }
+    }
+  }
+
+  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFiles([...e.dataTransfer.files]) }
+  const handleFileInput = (e, type) => {
+    const f = e.target.files[0]; if (!f) return
+    readFile(f).then(text => {
+      if (type === 'nodes') { setNodesFile(f.name); setNodesText(text) }
+      else { setRelsFile(f.name); setRelsText(text) }
+    })
+  }
+
+  useEffect(() => {
+    if (!nodesText) { setPreview(null); return }
+    try {
+      const nodes = csvParse(nodesText)
+      const rels = relsText ? csvParse(relsText) : []
+      setPreview({ nodeCount: nodes.length, relCount: rels.length, sampleNode: nodes[0], sampleRel: rels[0] })
+    } catch { setPreview(null) }
+  }, [nodesText, relsText])
+
+  const doImport = () => { if (nodesText) onImport(nodesText, relsText || '') }
+
+  const dropStyle = {
+    border: `2px dashed ${dragOver ? '#06d6a0' : '#1e2640'}`,
+    borderRadius: 12, padding: 24, textAlign: 'center',
+    background: dragOver ? '#06d6a011' : '#0b0f1a',
+    transition: 'all 0.2s', cursor: 'pointer', marginBottom: 16,
+  }
+  const btnStyle = (active) => ({
+    padding: '6px 16px', fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
+    border: `1px solid ${active ? '#06d6a0' : '#5a6378'}`,
+    background: active ? '#06d6a0' : 'transparent',
+    color: active ? '#0b0f1a' : '#8892b0',
+  })
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 25,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(11,15,26,0.7)', backdropFilter: 'blur(3px)',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'rgba(17,24,39,0.98)', border: '1px solid #06d6a0',
+        borderRadius: 16, padding: 28, width: '90%', maxWidth: 540,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+      }} onClick={e => e.stopPropagation()}>
+
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#e4e8f0', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          📥 CSV インポート
+          <span style={{ fontSize: 12, color: '#5a6378', fontWeight: 400 }}>VR CSV Standard v0.1</span>
+        </div>
+
+        {/* Drop zone */}
+        <div style={dropStyle}
+          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
+          <div style={{ color: '#8892b0', fontSize: 14 }}>
+            nodes.csv と relations.csv をドロップ
+          </div>
+          <div style={{ color: '#5a6378', fontSize: 12, marginTop: 6 }}>
+            またはファイルを選択 ↓
+          </div>
+        </div>
+
+        {/* File selectors */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: '#8892b0', marginBottom: 4 }}>nodes.csv {nodesFile && <span style={{ color: '#06d6a0' }}>✓ {nodesFile}</span>}</div>
+            <input type="file" accept=".csv,.tsv,.txt" onChange={e => handleFileInput(e, 'nodes')}
+              style={{ fontSize: 12, color: '#e4e8f0', width: '100%' }} />
+          </label>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: '#8892b0', marginBottom: 4 }}>relations.csv {relsFile && <span style={{ color: '#06d6a0' }}>✓ {relsFile}</span>}</div>
+            <input type="file" accept=".csv,.tsv,.txt" onChange={e => handleFileInput(e, 'rels')}
+              style={{ fontSize: 12, color: '#e4e8f0', width: '100%' }} />
+          </label>
+        </div>
+
+        {/* Preview */}
+        {preview && (
+          <div style={{
+            background: '#0b0f1a', borderRadius: 8, padding: 14, marginBottom: 16,
+            border: '1px solid #1e2640', fontSize: 13, color: '#c4c9d4',
+          }}>
+            <div style={{ fontWeight: 700, color: '#e4e8f0', marginBottom: 6 }}>プレビュー</div>
+            <div>ノード: <span style={{ color: '#06d6a0', fontWeight: 700 }}>{preview.nodeCount}</span></div>
+            <div>関係: <span style={{ color: '#118ab2', fontWeight: 700 }}>{preview.relCount}</span></div>
+            {preview.sampleNode && (
+              <div style={{ marginTop: 6, fontSize: 11, color: '#8892b0' }}>
+                例: {preview.sampleNode.id} — {preview.sampleNode.name}
+                {preview.sampleNode['axis:category'] && ` [${preview.sampleNode['axis:category']}]`}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={btnStyle(false)}>キャンセル</button>
+          <button onClick={doImport} disabled={!nodesText} style={btnStyle(!!nodesText)}>
+            読み込む ({preview?.nodeCount || 0} ノード)
+          </button>
+        </div>
+
+        {/* Format hint */}
+        <div style={{ marginTop: 16, fontSize: 11, color: '#5a6378', lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>フォーマット:</div>
+          <code style={{ display: 'block', background: '#0b0f1a', padding: 8, borderRadius: 6, fontSize: 10 }}>
+            nodes.csv: id, name, icon, desc, axis:category, color, radius<br/>
+            relations.csv: id, source, target, kind, weight, status, evidence
+          </code>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function Legend({ phase }) {
