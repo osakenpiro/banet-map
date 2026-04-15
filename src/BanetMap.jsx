@@ -337,6 +337,7 @@ function Graph({ nodes, relations, showHypothesis, catFilter, focus, onNodeFocus
 
             return <g key={d.id} transform={`translate(${d.x||0},${d.y||0})`}
               style={{ cursor:'grab', opacity:op, transition:'opacity 0.3s' }}
+              onClick={e => e.stopPropagation()}
               onPointerDown={e=>onPD(e,d)} onPointerMove={onPM} onPointerUp={e=>onPU(e,d)}
               onPointerEnter={()=>onHoverNode(d)} onPointerLeave={()=>onHoverNode(null)}>
               {glowR>0 && <circle r={glowR} fill="none" stroke={isF?'#ffd166':color}
