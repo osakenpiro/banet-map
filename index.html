@@ -16,5 +16,43 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-  </body>
+  <!-- osakenpiro support button v1 -->
+<style>
+  .osk-support-btn {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: linear-gradient(135deg, #FFDD00 0%, #FFC700 100%);
+    color: #1a1a1a;
+    padding: 10px 16px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    z-index: 99999;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .osk-support-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+  @media (max-width: 480px) {
+    .osk-support-btn { font-size: 12px; padding: 8px 12px; }
+  }
+</style>
+<a href="https://www.buymeacoffee.com/osakenpiro"
+   target="_blank"
+   rel="noopener noreferrer"
+   class="osk-support-btn"
+   aria-label="osakenpiroを応援する">
+  ☕ <span>応援</span>
+</a>
+<!-- /osakenpiro support button -->
+
+</body>
 </html>
