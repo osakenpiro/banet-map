@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import VRHeader from './VRHeader'
 import {
   forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide,
 } from 'd3-force'
@@ -231,49 +232,48 @@ export default function BanetMap() {
 
 function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleCat, phase, onClearFocus, searchQuery, onSearch, searchMatchIds, totalNodes, onExport, onImport }) {
   return (
-    <header style={{
-      padding: '10px 20px', borderBottom: '1px solid #1e2640',
-      display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-      background: '#0b0f1a', zIndex: 5,
-    }}>
-      <div style={{ fontSize: 20, fontWeight: 700, whiteSpace: 'nowrap' }}>🌀 バネットマップ</div>
-      {/* Search */}
-      <div style={{ position:'relative', minWidth:180 }}>
-        <input value={searchQuery} onChange={e=>onSearch(e.target.value)}
-          placeholder="🔍 ノード検索…"
-          style={{
-            width:'100%',padding:'6px 28px 6px 10px',fontSize:13,
-            background:'#111827',border:`1px solid ${searchMatchIds?'#ffd166':'#1e2640'}`,borderRadius:8,
-            color:'#e4e8f0',outline:'none',transition:'border-color 0.2s',
-          }}
-        />
-        {searchQuery && <button onClick={()=>onSearch('')} style={{
-          position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',
-          background:'none',border:'none',color:'#5a6378',fontSize:12,cursor:'pointer',padding:2
-        }}>✕</button>}
-      </div>
-      {searchMatchIds && (
-        <span style={{fontSize:12,color:'#ffd166',fontWeight:600}}>{searchMatchIds.size}/{totalNodes}</span>
-      )}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {Object.entries(CATEGORY_META).map(([k, v]) => (
-          <button key={k} onClick={() => onToggleCat(k)} style={{
-            padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 12,
-            cursor: 'pointer', border: 'none', transition: 'all .2s',
-            background: catFilter[k] ? v.color : '#1e2640',
-            color: catFilter[k] ? '#0b0f1a' : '#5a6378',
-          }}>{v.label}</button>
-        ))}
-      </div>
-      {phase > 0 && (
-        <button onClick={onClearFocus} style={{
-          padding: '3px 12px', fontSize: 11, fontWeight: 600, borderRadius: 12,
-          cursor: 'pointer', border: '1px solid #ef476f', background: 'transparent',
-          color: '#ef476f', marginLeft: 8,
-        }}>✕ 解除</button>
-      )}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* CSV import/export */}
+    <VRHeader
+      title="🌀 バネットマップ"
+      currentApp="banet"
+      version="β"
+      centerSlot={<>
+        {/* Search */}
+        <div style={{ position:'relative', minWidth:180 }}>
+          <input value={searchQuery} onChange={e=>onSearch(e.target.value)}
+            placeholder="🔍 ノード検索…"
+            style={{
+              width:'100%',padding:'6px 28px 6px 10px',fontSize:13,
+              background:'#111827',border:`1px solid ${searchMatchIds?'#ffd166':'#1e2640'}`,borderRadius:8,
+              color:'#e4e8f0',outline:'none',transition:'border-color 0.2s',
+            }}
+          />
+          {searchQuery && <button onClick={()=>onSearch('')} style={{
+            position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',
+            background:'none',border:'none',color:'#5a6378',fontSize:12,cursor:'pointer',padding:2
+          }}>✕</button>}
+        </div>
+        {searchMatchIds && (
+          <span style={{fontSize:12,color:'#ffd166',fontWeight:600}}>{searchMatchIds.size}/{totalNodes}</span>
+        )}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {Object.entries(CATEGORY_META).map(([k, v]) => (
+            <button key={k} onClick={() => onToggleCat(k)} style={{
+              padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 12,
+              cursor: 'pointer', border: 'none', transition: 'all .2s',
+              background: catFilter[k] ? v.color : '#1e2640',
+              color: catFilter[k] ? '#0b0f1a' : '#5a6378',
+            }}>{v.label}</button>
+          ))}
+        </div>
+        {phase > 0 && (
+          <button onClick={onClearFocus} style={{
+            padding: '3px 12px', fontSize: 11, fontWeight: 600, borderRadius: 12,
+            cursor: 'pointer', border: '1px solid #ef476f', background: 'transparent',
+            color: '#ef476f', marginLeft: 8,
+          }}>✕ 解除</button>
+        )}
+      </>}
+      rightSlot={<>
         <button onClick={onImport} title="CSV インポート" style={{
           padding:'4px 10px',fontSize:12,fontWeight:600,borderRadius:8,cursor:'pointer',
           border:'1px solid #06d6a0',background:'transparent',color:'#06d6a0',
@@ -287,13 +287,8 @@ function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleC
           仮説
         </label>
         <a href="https://github.com/osakenpiro/banet-map" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 12, textDecoration: 'none' }}>GitHub</a>
-        <a href="https://osakenpiro.github.io/wakkazukan/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>🪐 わっか</a>
-        <a href="https://osakenpiro.github.io/tana-zukan/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>📚 たな</a>
-        <a href="https://osakenpiro.github.io/hyakumasu/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>🔢 百ます</a>
-        <a href="https://osakenpiro.github.io/vr-akinator/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>🧙 魔神</a>
-        <div style={{ fontSize: 11, padding: '3px 10px', background: '#ffd166', color: '#0b0f1a', borderRadius: 12, fontWeight: 700 }}>β</div>
-      </div>
-    </header>
+      </>}
+    />
   )
 }
 
