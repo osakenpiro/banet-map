@@ -1,19 +1,17 @@
 /**
- * VRHeader — 5つのVRアプリ共通ヘッダーコンポーネント
+ * VRHeader v1.1 — 5つのVRアプリ共通ヘッダーコンポーネント
  *
  * VR (Visualize Rule) stack 全体で共有:
- *   🪐 わっかずかん  (ring classification)
- *   📚 たなずかん    (tier × 軸 grid)
- *   🌀 バネットマップ (bird's-eye map)
- *   🔢 百ます       (NxN matchup matrix)
- *   🧙 VR Akinator  (method recommender)
+ *   🪐 わっかずかん  (ring classification)      - variant="floating"
+ *   📚 たなずかん    (tier × 軸 grid)            - variant="sticky" (default)
+ *   🌀 バネットマップ (bird's-eye map)           - variant="sticky"
+ *   🔢 百ます       (NxN matchup matrix)        - variant="sticky"
+ *   🧙 VR Akinator  (method recommender)        - variant="sticky"
  *
  * マスター: osakenpiro/claude-shared/components/VRHeader.jsx
- * 配布先:   各VRアプリリポの src/VRHeader.jsx へコピー
  *
  * 更新時の同期:
  *   cp claude-shared/components/VRHeader.jsx <app-repo>/src/VRHeader.jsx
- *   各アプリで npm run build && git push
  */
 
 import React from 'react'
@@ -30,21 +28,14 @@ export const VR_APPS = [
  * VRHeader
  *
  * Props:
- *   title        string | ReactNode   左の大見出し（例: "📚 たなずかん"）
+ *   title        string | ReactNode   左の大見出し（例: "📚 たなずかん"）。floatingでは省略可
  *   currentApp   VR_APPS[i].id        現アプリID（このIDのリンクは非表示）
- *   version      string               右端のバージョンバッジ（例: "v0.6"）。省略可
- *   centerSlot   ReactNode            タイトル右の自由スロット（データセット切替・軸切替・検索など）
- *   rightSlot    ReactNode            他アプリリンクの左側の自由スロット（CSV・設定などアプリ固有のアクション）
- *   compact      boolean              省スペース版（padding・フォント小さめ）
- *
- * 利用例:
- *   <VRHeader
- *     title="📚 たなずかん"
- *     currentApp="tana"
- *     version="v0.7"
- *     centerSlot={<><DatasetSwitcher/><AxisSwitcher/><Search/></>}
- *     rightSlot={<><button>📥 CSV</button><button>📤 CSV</button></>}
- *   />
+ *   version      string               右端のバージョン/ステータスバッジ（例: "v0.6" | "β"）
+ *   centerSlot   ReactNode            タイトル右の自由スロット
+ *   rightSlot    ReactNode            他アプリリンク左の自由スロット
+ *   compact      boolean              省スペース版（stickyで適用）
+ *   variant      'sticky'|'floating'  配置モード。デフォルト 'sticky'
+ *                                     floating: わっか用、右上absoluteの浮遊パネル（glassmorphism）
  */
 export default function VRHeader({
   title,
@@ -53,68 +44,127 @@ export default function VRHeader({
   centerSlot,
   rightSlot,
   compact = false,
+  variant = 'sticky',
 }) {
   const others = VR_APPS.filter(a => a.id !== currentApp)
+  const floating = variant === 'floating'
+
+  const containerStyle = floating ? {
+    position: 'absolute', top: 8, right: 10, zIndex: 50,
+    display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+    padding: '6px 10px',
+    background: 'rgba(10,22,40,0.55)',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+    border: '1px solid #ffffff18',
+    borderRadius: 12,
+    color: '#e0e0e0',
+    fontFamily: "'Noto Sans JP','Hiragino Sans',sans-serif",
+    fontSize: 11,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+  } : {
+    padding: compact ? '6px 12px' : '10px 16px',
+    borderBottom: '1px solid #1e2640',
+    display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+    background: '#0b0f1a', position: 'sticky', top: 0, zIndex: 10,
+    color: '#e4e8f0',
+    fontFamily: "'Zen Kaku Gothic New','Noto Sans JP',system-ui,sans-serif",
+  }
+
+  const titleSize = floating ? 13 : (compact ? 15 : 18)
+
+  const rightGroupStyle = {
+    display: 'flex',
+    gap: floating ? 4 : 6,
+    marginLeft: floating ? 0 : 'auto',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  }
+
+  const appLinksContainerStyle = floating ? {
+    display: 'flex', gap: 3, alignItems: 'center',
+  } : {
+    display: 'flex', gap: 2, padding: '2px 4px',
+    background: '#0d1320', borderRadius: 10, border: '1px solid #1e2640',
+  }
+
+  const baseAppLinkStyle = floating ? {
+    color: '#ffffff88', fontSize: 11, textDecoration: 'none',
+    padding: '3px 8px', borderRadius: 10,
+    border: '1px solid #ffffff22',
+    transition: 'all 0.15s',
+    whiteSpace: 'nowrap',
+  } : {
+    color: '#8892b0', fontSize: 11, textDecoration: 'none',
+    padding: '3px 7px', borderRadius: 6,
+    display: 'inline-flex', alignItems: 'center', gap: 3,
+    transition: 'background 0.15s, color 0.15s',
+    whiteSpace: 'nowrap',
+    background: 'transparent',
+  }
+
+  const versionStyle = floating ? {
+    background: '#e9b44c22', border: '1px solid #e9b44c88',
+    color: '#e9b44c', padding: '3px 8px', borderRadius: 10,
+    fontWeight: 'bold', letterSpacing: '0.05em', fontSize: 10,
+  } : {
+    fontSize: 10, padding: '3px 8px',
+    background: '#ffd166', color: '#0b0f1a',
+    borderRadius: 10, fontWeight: 700,
+  }
+
+  const handleLinkEnter = (e) => {
+    if (floating) {
+      e.currentTarget.style.background = '#ffffff11'
+      e.currentTarget.style.borderColor = '#ffffff66'
+      e.currentTarget.style.color = '#ffffff'
+    } else {
+      e.currentTarget.style.background = '#1e2640'
+      e.currentTarget.style.color = '#e4e8f0'
+    }
+  }
+  const handleLinkLeave = (e) => {
+    if (floating) {
+      e.currentTarget.style.background = 'transparent'
+      e.currentTarget.style.borderColor = '#ffffff22'
+      e.currentTarget.style.color = '#ffffff88'
+    } else {
+      e.currentTarget.style.background = 'transparent'
+      e.currentTarget.style.color = '#8892b0'
+    }
+  }
+
+  const Wrapper = floating ? 'div' : 'header'
+
   return (
-    <header style={{
-      padding: compact ? '6px 12px' : '10px 16px',
-      borderBottom: '1px solid #1e2640',
-      display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-      background: '#0b0f1a', position: 'sticky', top: 0, zIndex: 10,
-      color: '#e4e8f0',
-      fontFamily: "'Zen Kaku Gothic New','Noto Sans JP',system-ui,sans-serif",
-    }}>
-      <div style={{
-        fontSize: compact ? 15 : 18,
-        fontWeight: 700,
-        whiteSpace: 'nowrap',
-      }}>{title}</div>
+    <Wrapper style={containerStyle}>
+      {title && (
+        <div style={{fontSize: titleSize, fontWeight: 700, whiteSpace: 'nowrap'}}>{title}</div>
+      )}
 
       {centerSlot}
 
-      <div style={{
-        display: 'flex', gap: 6, marginLeft: 'auto', alignItems: 'center',
-        flexWrap: 'wrap',
-      }}>
+      <div style={rightGroupStyle}>
         {rightSlot}
 
-        <div style={{
-          display: 'flex', gap: 2, padding: '2px 4px',
-          background: '#0d1320', borderRadius: 10, border: '1px solid #1e2640',
-        }}>
+        <div style={appLinksContainerStyle}>
           {others.map(a => (
             <a key={a.id} href={a.url} target="_blank" rel="noreferrer"
               title={a.title}
-              style={{
-                color: '#8892b0', fontSize: 11, textDecoration: 'none',
-                padding: '3px 7px', borderRadius: 6,
-                display: 'inline-flex', alignItems: 'center', gap: 3,
-                transition: 'background 0.15s, color 0.15s',
-                whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#1e2640'
-                e.currentTarget.style.color = '#e4e8f0'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = '#8892b0'
-              }}
+              style={baseAppLinkStyle}
+              onMouseEnter={handleLinkEnter}
+              onMouseLeave={handleLinkLeave}
             >
-              <span style={{fontSize: 12}}>{a.emoji}</span>
-              <span>{a.label}</span>
+              {floating
+                ? `${a.emoji} ${a.label}`
+                : <><span style={{fontSize: 12}}>{a.emoji}</span><span>{a.label}</span></>
+              }
             </a>
           ))}
         </div>
 
-        {version && (
-          <span style={{
-            fontSize: 10, padding: '3px 8px',
-            background: '#ffd166', color: '#0b0f1a',
-            borderRadius: 10, fontWeight: 700,
-          }}>{version}</span>
-        )}
+        {version && <span style={versionStyle}>{version}</span>}
       </div>
-    </header>
+    </Wrapper>
   )
 }
