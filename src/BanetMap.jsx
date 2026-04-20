@@ -287,7 +287,10 @@ function Header({ meta, showHypothesis, onToggleHypothesis, catFilter, onToggleC
           仮説
         </label>
         <a href="https://github.com/osakenpiro/banet-map" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 12, textDecoration: 'none' }}>GitHub</a>
-        <a href="https://osakenpiro.github.io/wakkazukan/" target="_blank" rel="noreferrer" style={{ color: '#06d6a0', fontSize: 12, textDecoration: 'none' }}>🪐 わっかずかん</a>
+        <a href="https://osakenpiro.github.io/wakkazukan/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>🪐 わっか</a>
+        <a href="https://osakenpiro.github.io/tana-zukan/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>📚 たな</a>
+        <a href="https://osakenpiro.github.io/hyakumasu/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>🔢 百ます</a>
+        <a href="https://osakenpiro.github.io/vr-akinator/" target="_blank" rel="noreferrer" style={{ color: '#8892b0', fontSize: 11, textDecoration: 'none' }}>🧙 魔神</a>
         <div style={{ fontSize: 11, padding: '3px 10px', background: '#ffd166', color: '#0b0f1a', borderRadius: 12, fontWeight: 700 }}>β</div>
       </div>
     </header>
